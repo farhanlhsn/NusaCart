@@ -8,7 +8,7 @@ public class NusaCartApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(NusaCartApplication.class, args);
-		System.out.println("Hello NusaCart hehe");
+		System.out.println("Hello NusaCart");
 	}
 
 }
