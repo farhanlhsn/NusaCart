@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
+import com.TryCatch.NusaCart.dto.LogoutRequestDTO;
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.service.AuthService;
@@ -41,9 +42,9 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<AuthResponseDTO> logout(@RequestBody String email) {
-        log.info("Logout attempt for email: {}", email);
-        AuthResponseDTO response = authService.logout(email);
+    public ResponseEntity<AuthResponseDTO> logout(@RequestBody LogoutRequestDTO logoutDto) {
+        log.info("Logout attempt for email: {}", logoutDto.getEmail());
+        AuthResponseDTO response = authService.logout(logoutDto);
         return ResponseEntity.ok(response);
     }
 }

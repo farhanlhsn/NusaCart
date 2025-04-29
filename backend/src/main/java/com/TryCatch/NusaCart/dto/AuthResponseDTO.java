@@ -25,6 +25,7 @@ public class AuthResponseDTO {
         this.user = user;
         this.message = message;
         this.loginTime = user.getLastLogin();
+        this.tokenType = "Bearer";
     }
     
     // Constructor untuk respons sukses tanpa token (misalnya untuk logout)
@@ -32,5 +33,6 @@ public class AuthResponseDTO {
         this.user = user;
         this.message = message;
         this.loginTime = user.getLastLogin();
+        this.tokenType = "Bearer";
     }
 }
