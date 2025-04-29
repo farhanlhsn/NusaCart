@@ -1,0 +1,26 @@
+package com.TryCatch.NusaCart.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class UserRegisterDTO {
+    @NotBlank(message = "Nama tidak boleh kosong")
+    private String name;
+
+    @NotBlank(message = "Email tidak boleh kosong")
+    @Email(message = "Format email tidak valid")
+    private String email;
+
+    @NotBlank(message = "Password tidak boleh kosong")
+    @Size(min = 8, message = "Password minimal 8 karakter")
+    private String password;
+}
