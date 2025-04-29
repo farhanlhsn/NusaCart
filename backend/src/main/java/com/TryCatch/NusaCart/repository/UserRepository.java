@@ -13,5 +13,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     // Cek apakah email sudah terdaftar (untuk validasi registrasi)
     boolean existsByEmail(String email);
 
-    Optional<User> findFirstByToken(String token);
+    /* Optional<User> findFirstByToken(String token); */
 }

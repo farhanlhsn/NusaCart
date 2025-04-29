@@ -6,6 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
+import com.TryCatch.NusaCart.dto.LogoutRequestDTO;
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserResponseDTO;
@@ -56,10 +57,10 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponseDTO logout(String email) {
-        log.info("Logout attempt for email: {}", email);
+    public AuthResponseDTO logout(LogoutRequestDTO request) {
+        log.info("Logout attempt for email: {}", request.getEmail());
         
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
         user.setLogin(false);
         
         User CurrentUser = userRepository.save(user);
