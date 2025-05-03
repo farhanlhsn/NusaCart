@@ -6,9 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.TryCatch.NusaCart.config.JwtConfig;
-import com.TryCatch.NusaCart.entity.User;
+import com.TryCatch.NusaCart.entity.UserEntity;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -27,13 +29,15 @@ public class JwtUtil {
         this.expirationTime = jwtConfig.getJwtExpiration();
     }
 
-    public String generateToken(User user) {
-        String email = user.getName();
+    public String generateToken(UserEntity user) {
+        String email = user.getEmail();
+        Integer userId = user.getUserId();
         Date currDate = new Date();
         Date expDate = new Date(System.currentTimeMillis() + expirationTime);
 
         String token = Jwts.builder()
                         .setSubject(email)
+                        .claim("userId", userId)
                         .setIssuedAt(currDate)
                         .setExpiration(expDate)
                         .signWith(key, SignatureAlgorithm.HS512)
@@ -45,8 +49,12 @@ public class JwtUtil {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            throw new AuthenticationCredentialsNotFoundException("JWT expired", e.fillInStackTrace());
+        } catch (MalformedJwtException e) {
+            throw new AuthenticationCredentialsNotFoundException("Invalid JWT", e.fillInStackTrace());
         } catch (Exception e) {
-            throw new AuthenticationCredentialsNotFoundException("JWT was expired or incorrect", e.fillInStackTrace());
+            throw new AuthenticationCredentialsNotFoundException("JWT error", e.fillInStackTrace());
         }
     }
 
@@ -67,5 +75,14 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    public Integer getUserIdFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("userId", Integer.class);
     }
 }

@@ -11,7 +11,7 @@ import javax.crypto.SecretKey;
 @Configuration
 public class JwtConfig {
     
-    @Value("${jwt.expiration:86400000}")
+    @Value("${jwt.expiration:180000}") //untuk testing dibuat 3 menit
     private long jwtExpiration;
     
     @Bean
@@ -21,5 +21,9 @@ public class JwtConfig {
     
     public long getJwtExpiration() {
         return jwtExpiration;
+    }
+
+    public void setJwtExpiration(long jwtExpiration) {
+        this.jwtExpiration = jwtExpiration;
     }
 }
