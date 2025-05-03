@@ -24,15 +24,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @Entity
 @Table(name = "users") 
-public class User {
-    //Ini digunaan apabila boleh tidak sesuai dengan class diagram Final
-    /* @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer userId; */
-
+public class UserEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer userId;
 
     private String name;
 

@@ -41,12 +41,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             
             // 2. Validasi token
             if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
-                // 3. Ekstrak email dari token
-                String email = jwtUtil.getEmailFromToken(token);
+                // 3. Ekstrak id dari token
+                Integer userId = jwtUtil.getUserIdFromToken(token);
                 
                 // 4. Load user dari database 
-                userRepository.findByEmail(email).ifPresent(user -> {
-                    // 5. Buat objek Authentication
+                userRepository.findByUserId(userId).ifPresent(user -> {
+                    // 5. Pastikan user login status true (tambahan validasi)
+                    if (!user.isLogin()) {
+                        return; // Jika user status tidak login, jangan authenticate
+                    }
+                    // 6. Buat objek Authentication
                     UsernamePasswordAuthenticationToken authentication = 
                         new UsernamePasswordAuthenticationToken(
                             user,
@@ -54,10 +58,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
                         );
                     
-                    // 6. Set detail dari request
+                    // 7. Set detail dari request
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     
-                    // 7. Set Authentication ke Security Context
+                    // 8. Set Authentication ke Security Context
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 });
             }
@@ -65,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.info("Could not set authentication in security context", e);
         }
         
-        // 8. Lanjutkan ke filter berikutnya
+        // 9. Lanjutkan ke filter berikutnya
         filterChain.doFilter(request, response);
     }
 }

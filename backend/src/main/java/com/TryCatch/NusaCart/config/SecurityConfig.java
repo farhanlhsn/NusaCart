@@ -46,7 +46,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/api/auth/**", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/seller/**").hasRole("SELLER")
+                .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER")
                 .anyRequest().authenticated()
             );
             

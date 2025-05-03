@@ -3,12 +3,15 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.TryCatch.NusaCart.entity.User;
+import com.TryCatch.NusaCart.entity.UserEntity;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends JpaRepository<UserEntity, String> {
     // Mencari user berdasarkan email (untuk login dan validasi)
-    Optional<User> findByEmail(String email);
+    Optional<UserEntity> findByEmail(String email);
+
+    // Mencari user berdasarkan userId (untuk mendapatkan informasi user)
+    Optional<UserEntity> findByUserId(Integer userId);
 
     // Cek apakah email sudah terdaftar (untuk validasi registrasi)
     boolean existsByEmail(String email);
