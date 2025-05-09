@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 import com.TryCatch.NusaCart.entity.UserEntity;
 
 @Repository
-public interface UserRepository extends JpaRepository<UserEntity, String> {
+public interface UserRepository extends JpaRepository<UserEntity, Integer> {
     // Mencari user berdasarkan email (untuk login dan validasi)
     Optional<UserEntity> findByEmail(String email);
 

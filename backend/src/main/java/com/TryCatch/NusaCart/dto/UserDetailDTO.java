@@ -1,8 +1,8 @@
 package com.TryCatch.NusaCart.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -10,16 +10,16 @@ import java.time.LocalDateTime;
 import com.TryCatch.NusaCart.entity.UserEntity;
 
 @Data
-@Builder
+//@Builder
+@EqualsAndHashCode(callSuper=false)
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDetailDTO {
-    private boolean isLogin;
+public class UserDetailDTO extends UserBasicDTO {
     private LocalDateTime lastLogin;
     private LocalDateTime registeredDate;
 
     public UserDetailDTO(UserEntity user) {
-        this.isLogin = user.isLogin();
+        super(user);
         this.lastLogin = user.getLastLogin();
         this.registeredDate = user.getRegisteredDate();
     }

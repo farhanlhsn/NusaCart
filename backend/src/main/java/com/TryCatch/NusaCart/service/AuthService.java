@@ -1,15 +1,19 @@
 package com.TryCatch.NusaCart.service;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
-import com.TryCatch.NusaCart.dto.LogoutRequestDTO;
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserBasicDTO;
+/* import com.TryCatch.NusaCart.dto.SellerRegisterDTO; */
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.enums.UserRole;
 import com.TryCatch.NusaCart.repository.UserRepository;
@@ -57,14 +61,31 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponseDTO logout(LogoutRequestDTO request) {
-        log.info("Logout attempt for email: {}", request.getEmail());
+    public Map<String, String> logout() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
-        UserEntity user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
-        user.setLogin(false);
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            log.error("Logout gagal: user tidak terautentikasi");
+            throw new RuntimeException("User sedang tidak login");
+        }
         
-        UserEntity currentUser = userRepository.save(user);
-        return new AuthResponseDTO(new UserBasicDTO(currentUser), "Logout berhasil");
+        UserEntity user = (UserEntity) authentication.getPrincipal();
+        String email = user.getEmail();
+        log.info("Logout attempt for email: {}", email);
+        
+        UserEntity currentUser = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
+        currentUser.setLogin(false);
+        userRepository.save(currentUser);
+        log.info("User {} logged out successfully", email);
+        
+        SecurityContextHolder.clearContext();
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Logout berhasil");
+        response.put("status", "success");
+        return response;
     }
 
     @Transactional
@@ -77,11 +98,40 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setName(request.getName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(UserRole.USER);
+        user.addRole(UserRole.USER);
         user.setRegisteredDate(LocalDateTime.now());
         user.setProfilePicture("");
+        user.setPhoneNumber(request.getPhoneNumber());
         UserEntity savedUser = userRepository.save(user);
         
         return new AuthResponseDTO(new UserBasicDTO(savedUser), "Registrasi berhasil");
     }
+
+/*     //to be continued
+    @Transactional
+    public Map<String, String> registerSeller(SellerRegisterDTO request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email sudah terdaftar");
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = (UserEntity) authentication.getPrincipal();
+        user.addRole(UserRole.SELLER);
+        userRepository.save(user);
+
+        TokoEntity toko = new TokoEntity();
+        toko.setEmail(request.getEmailToko());
+        toko.setName(request.getNamaToko());
+        toko.setRegisteredDate(LocalDateTime.now());
+        toko.setProfilePicture(request.getProfilePictureTokoURL());
+        toko.setPhoneNumber(request.getNoTelpToko());
+        toko.setDescription(request.getDescriptionToko());
+        toko.setAddress(request.getAlamatToko());
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", ("Pendaftaran toko " + toko.getName() + " berhasil"));
+        response.put("status", "success");
+        TokoEntity savedToko = tokoRepository.save(toko);
+        return new HashMap<>();
+    } */
 }
