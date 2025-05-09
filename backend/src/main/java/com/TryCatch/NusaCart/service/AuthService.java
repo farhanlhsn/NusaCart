@@ -10,12 +10,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
+import com.TryCatch.NusaCart.dto.SellerRegisterDTO;
+import com.TryCatch.NusaCart.dto.TokoDTO;
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserBasicDTO;
-/* import com.TryCatch.NusaCart.dto.SellerRegisterDTO; */
+import com.TryCatch.NusaCart.entity.TokoEntity;
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.enums.UserRole;
+import com.TryCatch.NusaCart.repository.TokoRepository;
 import com.TryCatch.NusaCart.repository.UserRepository;
 import com.TryCatch.NusaCart.security.JwtUtil;
 
@@ -33,13 +36,18 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private TokoRepository tokoRepository;
 
     public AuthService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder, 
-                      JwtUtil jwtUtil) {
+                      JwtUtil jwtUtil,
+                      TokoRepository tokoRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.tokoRepository = tokoRepository;
     }
 
     @Transactional
@@ -107,31 +115,52 @@ public class AuthService {
         return new AuthResponseDTO(new UserBasicDTO(savedUser), "Registrasi berhasil");
     }
 
-/*     //to be continued
     @Transactional
     public Map<String, String> registerSeller(SellerRegisterDTO request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email sudah terdaftar");
-        }
-
+        // Get current authenticated user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            log.error("Registrasi seller gagal: user tidak terautentikasi");
+            throw new RuntimeException("User harus login terlebih dahulu");
+        }
+        
         UserEntity user = (UserEntity) authentication.getPrincipal();
-        user.addRole(UserRole.SELLER);
-        userRepository.save(user);
-
+        log.info("Registering seller for user: {}", user.getEmail());
+        
+        // Check if email toko already exists
+        if (tokoRepository.existsByEmailToko(request.getEmailToko())) {
+            throw new IllegalArgumentException("Email toko sudah digunakan");
+        }
+        
+        // Check if nama toko already exists
+        if (tokoRepository.existsByNamaToko(request.getNamaToko())) {
+            throw new IllegalArgumentException("Nama toko sudah digunakan");
+        }
+        
+        // Add SELLER role to user if they don't have it yet
+        if (!user.getRoles().contains(UserRole.SELLER)) {
+            user.addRole(UserRole.SELLER);
+            userRepository.save(user);
+            log.info("Added SELLER role to user: {}", user.getEmail());
+        }
+        
+        // Create and save the store entity
         TokoEntity toko = new TokoEntity();
-        toko.setEmail(request.getEmailToko());
-        toko.setName(request.getNamaToko());
-        toko.setRegisteredDate(LocalDateTime.now());
-        toko.setProfilePicture(request.getProfilePictureTokoURL());
-        toko.setPhoneNumber(request.getNoTelpToko());
-        toko.setDescription(request.getDescriptionToko());
-        toko.setAddress(request.getAlamatToko());
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", ("Pendaftaran toko " + toko.getName() + " berhasil"));
-        response.put("status", "success");
+        toko.setNamaToko(request.getNamaToko());
+        toko.setDeskripsiToko(request.getDescriptionToko());
+        toko.setAlamatToko(request.getAlamatToko());
+        toko.setSeller(user);
+        toko.setNoTelpToko(request.getNoTelpToko());
+        toko.setEmailToko(request.getEmailToko());
+        toko.setProfilePictureToko(request.getProfilePictureTokoURL());
+        
         TokoEntity savedToko = tokoRepository.save(toko);
-        return new HashMap<>();
-    } */
+        log.info("Store registered with ID: {}", savedToko.getIdToko());
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Pendaftaran toko " + savedToko.getNamaToko() + " berhasil");
+        response.put("status", "success");
+        return response;
+    }
 }

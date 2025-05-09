@@ -46,8 +46,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/api/auth/**", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                //.requestMatchers("/api/seller/**").hasRole("SELLER")
-                // .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER")
+                .requestMatchers("/api/toko").permitAll() // Public endpoints for viewing stores
+                .requestMatchers("/api/toko/{idToko}").permitAll() // Public endpoint for viewing a specific store
+                .requestMatchers("/api/toko/search").permitAll() // Public endpoint for searching stores
+                .requestMatchers("/api/seller/register").hasRole("USER")
+                .requestMatchers("/api/toko/my-stores").hasRole("SELLER") // For seller to manage their own stores
+                .requestMatchers("/api/toko").hasRole("SELLER") // POST to create a store
+                .requestMatchers("/api/toko/{idToko}").hasRole("SELLER") // PUT/DELETE to update/delete a store
+                .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
                 .requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()
             );
