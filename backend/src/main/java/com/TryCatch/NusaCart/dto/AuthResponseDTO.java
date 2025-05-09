@@ -6,14 +6,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthResponseDTO {
-    @Builder.Default
     private String status = "success";
     private String message;
-    @Builder.Default
     private String tokenType = "Bearer";
     private String token;
     private UserBasicDTO user;
@@ -32,7 +29,8 @@ public class AuthResponseDTO {
         this.token = token;
         this.user = user;
         this.message = message;
-        this.tokenType = "Bearer";
+        this.tokenType = "Bearer ";
+        this.status = "success";
     }
     
     // Constructor untuk respons sukses tanpa token (misalnya untuk logout)
@@ -40,5 +38,6 @@ public class AuthResponseDTO {
         this.user = user;
         this.message = message;
         this.tokenType = "Bearer";
+        this.status = "success";
     }
 }

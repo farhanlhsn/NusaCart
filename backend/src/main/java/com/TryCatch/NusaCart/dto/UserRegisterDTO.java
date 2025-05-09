@@ -23,4 +23,7 @@ public class UserRegisterDTO {
     @NotBlank(message = "Password tidak boleh kosong")
     @Size(min = 8, message = "Password minimal 8 karakter")
     private String password;
+
+    @NotBlank(message = "Nomor telepon tidak boleh kosong")
+    private String phoneNumber;
 }

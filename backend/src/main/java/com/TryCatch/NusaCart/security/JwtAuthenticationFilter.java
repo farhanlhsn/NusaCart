@@ -1,6 +1,7 @@
 package com.TryCatch.NusaCart.security;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,8 +18,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -48,14 +47,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 userRepository.findByUserId(userId).ifPresent(user -> {
                     // 5. Pastikan user login status true (tambahan validasi)
                     if (!user.isLogin()) {
+                        log.warn("User {} is not logged in", user.getEmail());
                         return; // Jika user status tidak login, jangan authenticate
                     }
+                    
+                    // Log roles for debugging
+                    log.info("User {} has roles: {}", user.getEmail(), user.getRoles());
+                    
                     // 6. Buat objek Authentication
                     UsernamePasswordAuthenticationToken authentication = 
                         new UsernamePasswordAuthenticationToken(
                             user,
                             null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                            user.getRoles().stream()
+                                .map(role -> {
+                                    String roleName = "ROLE_" + role.name();
+                                    log.info("Setting role: {}", roleName);
+                                    return new SimpleGrantedAuthority(roleName);
+                                })
+                                .collect(Collectors.toList())
                         );
                     
                     // 7. Set detail dari request
@@ -63,6 +73,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     
                     // 8. Set Authentication ke Security Context
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                    log.info("Authentication set for user: {} with roles: {}", user.getEmail(), user.getRoles());
                 });
             }
         } catch (Exception e) {
