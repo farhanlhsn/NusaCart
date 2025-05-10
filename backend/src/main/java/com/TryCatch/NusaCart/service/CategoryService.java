@@ -257,4 +257,76 @@ public class CategoryService {
         response.put("message", "Kategori berhasil dihapus");
         return response;
     }
+    
+    // Get categories for current seller's stores
+    public List<CategoryDTO> getCategoriesForCurrentSeller() {
+        log.info("Getting categories for current seller's stores");
+        
+        // Get current authenticated user
+        UserEntity currentUser = userService.getCurrentUser();
+        
+        // Get all stores owned by the current seller
+        List<TokoEntity> sellerStores = tokoRepository.findBySeller(currentUser);
+        
+        if (sellerStores.isEmpty()) {
+            log.info("Current seller has no stores");
+            return List.of();
+        }
+        
+        // Collect all categories from all stores owned by the seller
+        return sellerStores.stream()
+                .flatMap(store -> categoryRepository.findByToko(store).stream())
+                .map(CategoryDTO::new)
+                .collect(Collectors.toList());
+    }
+    
+    // Get paginated categories for current seller's stores
+    public Map<String, Object> getPaginatedCategoriesForCurrentSeller(int page, int size) {
+        log.info("Getting paginated categories for current seller's stores with page: {} and size: {}", page, size);
+        
+        // Get current authenticated user
+        UserEntity currentUser = userService.getCurrentUser();
+        
+        // Get all stores owned by the current seller
+        List<TokoEntity> sellerStores = tokoRepository.findBySeller(currentUser);
+        
+        if (sellerStores.isEmpty()) {
+            log.info("Current seller has no stores");
+            Map<String, Object> emptyResponse = new HashMap<>();
+            emptyResponse.put("content", List.of());
+            emptyResponse.put("currentPage", page);
+            emptyResponse.put("totalItems", 0);
+            emptyResponse.put("totalPages", 0);
+            emptyResponse.put("size", size);
+            return emptyResponse;
+        }
+        
+        // Collect all categories from all stores owned by the seller
+        List<CategoryEntity> allCategories = sellerStores.stream()
+                .flatMap(store -> categoryRepository.findByToko(store).stream())
+                .collect(Collectors.toList());
+        
+        // Calculate total count
+        long totalCount = allCategories.size();
+        
+        // Apply pagination manually
+        List<CategoryDTO> paginatedCategories = allCategories.stream()
+                .skip(page * size)
+                .limit(size)
+                .map(CategoryDTO::new)
+                .collect(Collectors.toList());
+        
+        // Calculate total pages
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        
+        // Create response
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", paginatedCategories);
+        response.put("currentPage", page);
+        response.put("totalItems", totalCount);
+        response.put("totalPages", totalPages);
+        response.put("size", size);
+        
+        return response;
+    }
 }
