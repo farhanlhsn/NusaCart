@@ -101,18 +101,44 @@ public class CategoryController {
     @GetMapping("/search")
     public ResponseEntity<List<CategoryDTO>> searchCategories(
             @RequestParam String name,
-            @RequestParam(required = false) Integer idToko) {
+            @RequestParam(required = false) Integer toko) {
         log.info("GET request to search categories with name: {}", name);
         
         List<CategoryDTO> categories;
-        if (idToko != null) {
-            log.info("Searching in specific toko with ID: {}", idToko);
-            categories = categoryService.searchCategoriesByNameAndTokoId(name, idToko);
+        if (toko != null) {
+            log.info("Searching in specific toko with ID: {}", toko);
+            categories = categoryService.searchCategoriesByNameAndTokoId(name, toko);
         } else {
             categories = categoryService.searchCategoriesByName(name);
         }
         
         return ResponseEntity.ok(categories);
+    }
+    
+    // Get categories for current seller's stores with pagination
+    @GetMapping("/my-categories")
+    public ResponseEntity<?> getMyCategories(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("GET request to fetch categories for current seller's stores with pagination - page: {}, size: {}", page, size);
+        
+        // Validate pagination parameters
+        if (page < 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Page number cannot be negative"
+            ));
+        }
+        
+        if (size <= 0 || size > 100) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Size must be between 1 and 100"
+            ));
+        }
+        
+        Map<String, Object> response = categoryService.getPaginatedCategoriesForCurrentSeller(page, size);
+        return ResponseEntity.ok(response);
     }
     
     // Create a new category
