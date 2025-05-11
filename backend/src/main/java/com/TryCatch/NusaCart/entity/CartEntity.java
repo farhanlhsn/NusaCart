@@ -1,5 +1,5 @@
 package com.TryCatch.NusaCart.entity;
 
-public class Wishlist {
+public class CartEntity {
     
 }

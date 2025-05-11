@@ -49,10 +49,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/toko").permitAll() // Public endpoints for viewing stores
                 .requestMatchers("/api/toko/{idToko}").permitAll() // Public endpoint for viewing a specific store
                 .requestMatchers("/api/toko/search").permitAll() // Public endpoint for searching stores
+                .requestMatchers("/api/categories").permitAll() // Public endpoint for viewing all categories
+                .requestMatchers("/api/categories/{idCategory}").permitAll() // Public endpoint for viewing a specific category
+                .requestMatchers("/api/categories/toko/{idToko}").permitAll() // Public endpoint for viewing categories of a specific store
+                .requestMatchers("/api/categories/search").permitAll() // Public endpoint for searching categories
+                .requestMatchers("/api/categories/my-categories").hasRole("SELLER") // Endpoint for seller to view their categories
                 .requestMatchers("/api/seller/register").hasRole("USER")
                 .requestMatchers("/api/toko/my-stores").hasRole("SELLER") // For seller to manage their own stores
                 .requestMatchers("/api/toko").hasRole("SELLER") // POST to create a store
                 .requestMatchers("/api/toko/{idToko}").hasRole("SELLER") // PUT/DELETE to update/delete a store
+                .requestMatchers("/api/categories").hasRole("SELLER") // POST to create a category
+                .requestMatchers("/api/categories/{idCategory}").hasRole("SELLER") // PUT/DELETE to update/delete a category
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
                 .requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()
