@@ -83,4 +83,13 @@ public class GlobalExceptionHandler {
         
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleGlobalException(Exception ex) {
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "error");
+        response.put("message", "Terjadi kesalahan pada server");
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }
