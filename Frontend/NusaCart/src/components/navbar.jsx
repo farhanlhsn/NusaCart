@@ -1,43 +1,147 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import logo from "../assets/Logo.png";
-import { FaSearch, FaHeart, FaBell, FaShoppingCart, FaCommentDots, FaUser } from "react-icons/fa";
+import {
+  HeartIcon,
+  BellIcon,
+  ShoppingCartIcon,
+  ChatBubbleLeftRightIcon,
+  UserIcon,
+  Bars3Icon,
+  XMarkIcon
+} from "@heroicons/react/24/outline";
+import "./navbar.css";
 
 export default function Navbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="w-full">
+    <div className={`navbar-container ${isScrolled ? 'shadow-lg' : ''}`}>
       {/* Bar merah di atas */}
-      <div className="w-full h-12 bg-[#E64646]" />
+      <div className="top-bar" />
+      
       {/* Navbar utama */}
-      <nav className="flex items-center justify-between bg-white px-20 py-4 shadow">
-        {/* Kiri: Logo & Menu */}
-        <div className="flex items-center gap-8">
-          <img src={logo} alt="NusaCart Logo" className="h-10" />
-          <div className="flex gap-8 ml-8 font-poppins gap-10">
-            <a href="#" className="font-medium hover:underline underline-offset-8">Beranda</a>
-            <a href="#" className="font-medium hover:underline underline-offset-8">Kontak</a>
-            <a href="#" className="font-medium hover:underline underline-offset-8">Tentang</a>
+      <nav className="main-nav">
+        <div className="nav-content">
+          {/* Kiri: Logo & Menu */}
+          <div className="nav-left">
+            <a href="/"><img src={logo} alt="NusaCart Logo" className="logo" /></a>
+            {/* Desktop Menu */}
+            <div className="desktop-menu">
+              <a href="#" className="menu-item">Beranda</a>
+              <a href="#" className="menu-item">Kontak</a>
+              <a href="#" className="menu-item">Tentang</a>
+            </div>
           </div>
-        </div>
-        {/* Tengah: Search */}
-        <div className="flex-1 flex justify-center">
-          <div className="flex items-center bg-gray-100 rounded-full px-6 py-2 w-[700px] max-w-full">
-            <input
-              type="text"
-              placeholder="Apa yang Anda cari?"
-              className="bg-transparent outline-none flex-1 text-center text-gray-500 font-poppins"
-            />
-            <FaSearch className="text-gray-400 ml-2" />
+
+          {/* Tengah: Search */}
+          <div className="search-container">
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="Apa yang Anda cari?"
+                className="search-input"
+              />
+              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+            </div>
           </div>
-        </div>
-        {/* Kanan: Icon */}
-        <div className="flex items-center gap-6 ml-8">
-          <FaHeart className="w-6 h-6 cursor-pointer" />
-          <FaBell className="w-6 h-6 cursor-pointer" />
-          <FaShoppingCart className="w-6 h-6 cursor-pointer" />
-          <FaCommentDots className="w-6 h-6 cursor-pointer" />
-          <FaUser className="w-6 h-6 cursor-pointer" />
+
+          {/* Kanan: Icon */}
+          <div className="nav-right">
+            <div className="desktop-icons">
+              <button className="icon-button">
+                <HeartIcon className="icon" />
+                <span className="notification-badge">0</span>
+              </button>
+              <button className="icon-button">
+                <BellIcon className="icon" />
+                <span className="notification-badge">0</span>
+              </button>
+              <button className="icon-button">
+                <ShoppingCartIcon className="icon" />
+                <span className="notification-badge">0</span>
+              </button>
+              <button className="icon-button">
+                <ChatBubbleLeftRightIcon className="icon" />
+              </button>
+              <button className="icon-button">
+                <UserIcon className="icon" />
+              </button>
+            </div>
+            {/* Mobile Menu Button */}
+            <button 
+              className="mobile-menu-button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <XMarkIcon className="icon" /> : <Bars3Icon className="icon" />}
+            </button>
+          </div>
         </div>
       </nav>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="mobile-menu">
+          <div className="mobile-menu-content">
+            {/* Search Bar */}
+            <div className="mobile-search-box">
+              <input
+                type="text"
+                placeholder="Apa yang Anda cari?"
+                className="mobile-search-input"
+              />
+              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+            </div>
+            {/* Menu Items */}
+            <div className="mobile-menu-items">
+              <a href="#" className="mobile-menu-item">Beranda</a>
+              <a href="#" className="mobile-menu-item">Kontak</a>
+              <a href="#" className="mobile-menu-item">Tentang</a>
+            </div>
+            {/* Icons */}
+            <div className="mobile-icons-grid">
+              <button className="mobile-icon-button">
+                <div className="icon-container">
+                  <HeartIcon className="icon" />
+                  <span className="notification-badge">0</span>
+                </div>
+                <span className="icon-label">Wishlist</span>
+              </button>
+              <button className="mobile-icon-button">
+                <div className="icon-container">
+                  <BellIcon className="icon" />
+                  <span className="notification-badge">0</span>
+                </div>
+                <span className="icon-label">Notifikasi</span>
+              </button>
+              <button className="mobile-icon-button">
+                <div className="icon-container">
+                  <ShoppingCartIcon className="icon" />
+                  <span className="notification-badge">0</span>
+                </div>
+                <span className="icon-label">Keranjang</span>
+              </button>
+              <button className="mobile-icon-button">
+                <ChatBubbleLeftRightIcon className="icon" />
+                <span className="icon-label">Chat</span>
+              </button>
+              <button className="mobile-icon-button">
+                <UserIcon className="icon" />
+                <span className="icon-label">Akun</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
