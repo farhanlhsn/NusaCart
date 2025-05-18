@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductResponseDTO {
-    private Long productId;
+    private Integer productId;
     private String productName;
     private String description;
     private Double price;
