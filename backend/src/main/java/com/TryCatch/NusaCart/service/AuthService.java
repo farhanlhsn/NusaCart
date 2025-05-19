@@ -1,7 +1,10 @@
 package com.TryCatch.NusaCart.service;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -15,9 +18,11 @@ import com.TryCatch.NusaCart.dto.TokoDTO;
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserBasicDTO;
+import com.TryCatch.NusaCart.entity.RefreshTokenEntity;
 import com.TryCatch.NusaCart.entity.TokoEntity;
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.enums.UserRole;
+import com.TryCatch.NusaCart.repository.RefreshTokenRepository;
 import com.TryCatch.NusaCart.repository.TokoRepository;
 import com.TryCatch.NusaCart.repository.UserRepository;
 import com.TryCatch.NusaCart.security.JwtUtil;
@@ -40,15 +45,21 @@ public class AuthService {
     @Autowired
     private TokoRepository tokoRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     public AuthService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder, 
                       JwtUtil jwtUtil,
-                      TokoRepository tokoRepository) {
+                      TokoRepository tokoRepository, 
+                      RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.tokoRepository = tokoRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
+
 
     @Transactional
     public AuthResponseDTO login(UserLoginDTO request) {
@@ -64,8 +75,22 @@ public class AuthService {
         user.setLastLogin(LocalDateTime.now());
         UserEntity currentUser = userRepository.save(user);
 
-        String token = jwtUtil.generateToken(currentUser);
-        return new AuthResponseDTO(token, new UserBasicDTO(currentUser), "Login berhasil");
+        // Generate access token
+        String access_token = jwtUtil.generateToken(currentUser);
+        
+        // Generate refresh token
+        String refresh_token = jwtUtil.generateRefreshToken(currentUser);
+        
+        // Get token expiration time
+        Date expDate = new Date(System.currentTimeMillis() + jwtUtil.getExpirationTime());
+        LocalDateTime expires_in = LocalDateTime.ofInstant(expDate.toInstant(), ZoneId.systemDefault());
+
+        // Create response with both tokens using the new constructor
+        AuthResponseDTO response = new AuthResponseDTO(access_token, refresh_token, expires_in, new UserBasicDTO(currentUser), "Login berhasil");
+        
+        log.info("User {} berhasil login", user.getEmail());
+        
+        return response;
     }
 
     @Transactional
@@ -162,5 +187,44 @@ public class AuthService {
         response.put("message", "Pendaftaran toko " + savedToko.getNamaToko() + " berhasil");
         response.put("status", "success");
         return response;
+    }
+
+    @Transactional
+    public AuthResponseDTO refreshToken(String refreshToken) {
+        log.info("Processing refresh token request");
+        
+        // Validate refresh token
+        if (!jwtUtil.validateRefreshToken(refreshToken)) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+        
+        try {
+            // Get user from refresh token
+            Optional<RefreshTokenEntity> tokenEntity = refreshTokenRepository.findByToken(refreshToken);
+            if (!tokenEntity.isPresent()) {
+                throw new RuntimeException("Refresh token tidak valid");
+            }
+            
+            UserEntity user = tokenEntity.get().getUser();
+            if (user == null) {
+                throw new RuntimeException("User tidak ditemukan");
+            }
+            
+            // Generate new access token
+            String newAccessToken = jwtUtil.generateToken(user);
+            
+            // Calculate expiration
+            Date expDate = new Date(System.currentTimeMillis() + jwtUtil.getExpirationTime());
+            LocalDateTime expiresIn = LocalDateTime.ofInstant(expDate.toInstant(), ZoneId.systemDefault());
+            
+            log.info("Access token refreshed for user: {}", user.getEmail());
+            
+            // Return response with new access token and same refresh token
+            return new AuthResponseDTO(newAccessToken, refreshToken, expiresIn, new UserBasicDTO(user), "Token berhasil diperbaharui");
+            
+        } catch (Exception e) {
+            log.error("Error refreshing token: {}", e.getMessage());
+            throw new RuntimeException("Error saat memperbaharui token: " + e.getMessage());
+        }
     }
 }
