@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
 import com.TryCatch.NusaCart.dto.SellerRegisterDTO;
-import com.TryCatch.NusaCart.dto.TokoDTO;
+/* import com.TryCatch.NusaCart.dto.TokoDTO; */
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserBasicDTO;
@@ -63,6 +63,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponseDTO login(UserLoginDTO request) {
+        
         log.info("Login attempt for email: {}", request.getEmail());
         
         UserEntity user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
@@ -74,6 +75,9 @@ public class AuthService {
         user.setLogin(true);
         user.setLastLogin(LocalDateTime.now());
         UserEntity currentUser = userRepository.save(user);
+
+        // Delete any existing refresh token for this user
+        refreshTokenRepository.deleteByUser(currentUser);
 
         // Generate access token
         String access_token = jwtUtil.generateToken(currentUser);
@@ -112,6 +116,9 @@ public class AuthService {
         currentUser.setLogin(false);
         userRepository.save(currentUser);
         log.info("User {} logged out successfully", email);
+
+        // Delete any existing refresh token for this user
+        refreshTokenRepository.deleteByUser(currentUser);
         
         SecurityContextHolder.clearContext();
         

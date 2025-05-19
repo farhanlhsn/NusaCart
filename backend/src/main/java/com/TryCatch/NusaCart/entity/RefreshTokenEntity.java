@@ -32,7 +32,7 @@ public class RefreshTokenEntity {
     private String token;
     
     @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @JoinColumn(name = "user_id", referencedColumnName = "userId")
     private UserEntity user;
 
     @Column(nullable = false, updatable = false)

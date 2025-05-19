@@ -31,6 +31,8 @@ import org.springframework.util.StringUtils;
 public class JwtUtil {
     private final SecretKey key;
     private final long expirationTime;
+    
+    @Autowired
     private RefreshTokenRepository refreshTokenRepository;
     
     @Autowired
