@@ -76,8 +76,11 @@ public class AuthService {
         user.setLastLogin(LocalDateTime.now());
         UserEntity currentUser = userRepository.save(user);
 
+        //Ntar disini tambah logic untuk cek tokenrefresh dlu, kalau masih ada langsung lemparkan, kalau ga ada baru generate
+       
         // Delete any existing refresh token for this user
         refreshTokenRepository.deleteByUser(currentUser);
+        refreshTokenRepository.flush(); 
 
         // Generate access token
         String access_token = jwtUtil.generateToken(currentUser);
@@ -119,6 +122,7 @@ public class AuthService {
 
         // Delete any existing refresh token for this user
         refreshTokenRepository.deleteByUser(currentUser);
+        refreshTokenRepository.flush(); // Tambahkan ini untuk memastikan DELETE dieksekusi
         
         SecurityContextHolder.clearContext();
         
@@ -207,27 +211,37 @@ public class AuthService {
         
         try {
             // Get user from refresh token
-            Optional<RefreshTokenEntity> tokenEntity = refreshTokenRepository.findByToken(refreshToken);
-            if (!tokenEntity.isPresent()) {
-                throw new RuntimeException("Refresh token tidak valid");
+            Optional<RefreshTokenEntity> tokenEntityOpt = refreshTokenRepository.findByToken(refreshToken);
+            if (!tokenEntityOpt.isPresent()) {
+                throw new RuntimeException("Refresh token tidak valid atau sudah tidak berlaku");
             }
             
-            UserEntity user = tokenEntity.get().getUser();
+            RefreshTokenEntity oldTokenEntity = tokenEntityOpt.get();
+            UserEntity user = oldTokenEntity.getUser();
             if (user == null) {
-                throw new RuntimeException("User tidak ditemukan");
+                throw new RuntimeException("User tidak ditemukan untuk refresh token ini");
             }
+
+            // Invalidate (delete) the old refresh token
+            refreshTokenRepository.delete(oldTokenEntity);
+            refreshTokenRepository.flush(); // Tambahkan ini untuk memastikan DELETE dieksekusi
+            log.info("Old refresh token invalidated and flushed for user: {}", user.getEmail());
             
             // Generate new access token
             String newAccessToken = jwtUtil.generateToken(user);
+
+            // Generate NEW refresh token (ini juga akan menyimpan ke DB)
+            String newRefreshTokenString = jwtUtil.generateRefreshToken(user); 
+            log.info("New refresh token generated for user: {}", user.getEmail());
             
-            // Calculate expiration
+            // Calculate expiration for the new access token
             Date expDate = new Date(System.currentTimeMillis() + jwtUtil.getExpirationTime());
             LocalDateTime expiresIn = LocalDateTime.ofInstant(expDate.toInstant(), ZoneId.systemDefault());
             
             log.info("Access token refreshed for user: {}", user.getEmail());
             
-            // Return response with new access token and same refresh token
-            return new AuthResponseDTO(newAccessToken, refreshToken, expiresIn, new UserBasicDTO(user), "Token berhasil diperbaharui");
+            // Return response with new access token and NEW refresh token
+            return new AuthResponseDTO(newAccessToken, newRefreshTokenString, expiresIn, new UserBasicDTO(user), "Token berhasil diperbaharui");
             
         } catch (Exception e) {
             log.error("Error refreshing token: {}", e.getMessage());

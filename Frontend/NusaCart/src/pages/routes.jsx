@@ -15,10 +15,12 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <UserRegisterPage />,
-  },
-  {
-    path: "/register/success",
-    element: <UserSuccesRegisterPage />,
+    children: [
+      {
+        path: "success",
+        element: <UserSuccesRegisterPage />,
+      }
+    ],
   },
   /* {
     path: "/forgot",

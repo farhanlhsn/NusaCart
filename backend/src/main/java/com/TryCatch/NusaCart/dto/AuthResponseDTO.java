@@ -19,24 +19,6 @@ public class AuthResponseDTO {
     private String refresh_token;
     private UserBasicDTO user;
 
-/*     @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AuthDataDTO {
-        private UserBasicDTO user;
-        private String token;
-    } */
-    
-    // Constructor untuk respons sukses dengan token
-/*     public AuthResponseDTO(String access_token, UserBasicDTO user, String message) {
-        this.access_token = access_token;
-        this.user = user;
-        this.message = message;
-        this.tokenType = "Bearer ";
-        this.status = "success";
-    } */
-    
     // Constructor untuk respons sukses tanpa token (misalnya untuk logout)
     public AuthResponseDTO(UserBasicDTO user, String message) {
         this.user = user;

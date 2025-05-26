@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import logo from "../assets/Logo.png";
 import asset from "../assets/loginNregister.png";
 import useAuthStore from "../stores/authStore";	
-import axios from "axios";
+import api from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -37,7 +37,7 @@ export default function LoginPage() {
 		
 		try {
 			console.log("Sending data to server:", formData);
-			const response = await axios.post("/api/auth/login", formData);
+			const response = await api.post("/api/auth/login", formData);
 			
 			if (response.status === 200) {
 				console.log("Login successful:", response.data);

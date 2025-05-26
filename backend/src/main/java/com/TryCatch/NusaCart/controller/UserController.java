@@ -5,10 +5,13 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.TryCatch.NusaCart.dto.ChangePasswordDTO;
 import com.TryCatch.NusaCart.dto.UserDetailDTO;
@@ -36,10 +39,26 @@ public class UserController {
         return ResponseEntity.ok(userDetail);
     }
 
+    /* @PutMapping("/update_profile")
+    public ResponseEntity<UserDetailDTO> updateUserProfile(@Valid @RequestBody UserDetailDTO request) {
+        log.info("Updating user profile");
+        UserEntity user = userService.getCurrentUser();
+        UserEntity updatedUser = userService.(user, request);
+        UserDetailDTO userDetail = new UserDetailDTO(updatedUser);
+        return ResponseEntity.ok(userDetail);
+    } */
+
     @PutMapping("/change_password")
     public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordDTO request) {
         log.info("Changing user password");
         Map<String, String> response = userService.changePassword(request);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/change_Profile_Picture")
+    public ResponseEntity<Map<String, String>> updateProfilePicture(@Valid @RequestParam("file") MultipartFile file) {
+        log.info("Updating user profile");
+        Map<String, String> response = userService.updateProfileImage(file);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
