@@ -5,22 +5,22 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "carts")
+@Table(name = "order_items")
 @Data
 @NoArgsConstructor
-public class CartEntity {
+public class OrderItemEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+    private OrderEntity order;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "product_id", nullable = false)
     private ProductEntity product;
 
-    @Column(nullable = false)
     private Integer quantity;
+
+    private Double price;
 }
