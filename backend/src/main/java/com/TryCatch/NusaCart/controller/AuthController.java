@@ -61,4 +61,21 @@ public class AuthController {
         Map<String, String> response = authService.logout();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+    
+    @PostMapping(
+        path = "/refresh",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<AuthResponseDTO> refreshToken(@RequestBody Map<String, String> request) {
+        log.info("Token refresh request received");
+        String refreshToken = request.get("refresh_token");
+        
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            throw new RuntimeException("Refresh token tidak boleh kosong");
+        }
+        
+        AuthResponseDTO response = authService.refreshToken(refreshToken);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 }
