@@ -5,17 +5,26 @@ const useAuthStore = create(
   persist(
     (set) => ({
       isLoggedIn: false,
-      Token: null,
+      accessToken: null,
+      refreshToken: null,
       user: null,
 
-      login: (UserData) => {
-        localStorage.setItem('accessToken', UserData.token);
-        set({ isLoggedIn: true, Token: UserData.token, user: UserData.user });
+      login: (userData) => {
+        set({
+          isLoggedIn: true,
+          accessToken: userData.access_token, // Simpan accessToken
+          refreshToken: userData.refresh_token, // Simpan refreshToken
+          user: userData.user,
+        });
       },
 
       logout: () => {
-        localStorage.removeItem('accessToken');
-        set({ isLoggedIn: false, Token: null, user: null });
+        set({
+          isLoggedIn: false,
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+        });
       },
     }),
     {

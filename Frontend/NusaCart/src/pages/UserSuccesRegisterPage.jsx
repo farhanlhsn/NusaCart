@@ -3,13 +3,22 @@ import logo from "../assets/Logo.png";
 import asset from "../assets/loginNregister.png";
 import success from "../assets/CircleCheck.png";
 import useRegisterStore from "../stores/registerStore";
+import { useNavigate, useLocation, Navigate } from "react-router-dom"; // Tambahkan Navigate
+
 
 export default function UserSuccesRegisterPage() {
 	const { reset } = useRegisterStore();
+	const navigate = useNavigate();
+	const location = useLocation();
+
+	if (!location.state?.fromRegistration) {
+		// Gunakan komponen Navigate untuk redirect yang lebih deklaratif
+		return <Navigate to="/register" replace />;
+	}
 
 	const handleLogin = () => {
 		reset(); // Reset state sebelum navigasi
-		window.location.href = "/login";
+		navigate("/login");
 	};
 
 	return (
