@@ -11,4 +11,5 @@ public class OrderResponseDTO {
     private List<OrderItemResponseDTO> items;
     private Double total;
     private LocalDateTime createdAt;
+    private String address;
 }

@@ -26,4 +26,7 @@ public class OrderEntity {
     private Double total;
 
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private AddressEntity address;
 }
