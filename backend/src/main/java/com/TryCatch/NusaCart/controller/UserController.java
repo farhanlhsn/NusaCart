@@ -3,6 +3,7 @@ package com.TryCatch.NusaCart.controller;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,9 +51,36 @@ public class UserController {
 
     @PutMapping("/change_password")
     public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordDTO request) {
-        log.info("Changing user password");
-        Map<String, String> response = userService.changePassword(request);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        log.info("Step 1: Initiating password change process");
+        try {
+            Map<String, String> response = userService.changePassword(request);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Failed to initiate password change: {}", e.getMessage());
+            return new ResponseEntity<>(
+                Map.of("status", "error","message", e.getMessage()), 
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+    @PostMapping(
+        path = "/confirm_password_change",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> confirmPasswordChange(@RequestBody Map<String, Integer> request) {
+        log.info("Step 2: Confirming password change with verification code");
+        try {
+            Map<String, String> response = userService.confirmPasswordChange(request.get("verificationCode"));
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Failed to confirm password change: {}", e.getMessage());
+            return new ResponseEntity<>(
+                Map.of("status", "error","message", e.getMessage()), 
+                HttpStatus.BAD_REQUEST
+            );
+        }
     }
 
     @PostMapping("/change_Profile_Picture")

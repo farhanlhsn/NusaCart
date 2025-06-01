@@ -13,8 +13,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
+import com.TryCatch.NusaCart.dto.ForgetPasswordDTO;
 import com.TryCatch.NusaCart.dto.SellerRegisterDTO;
-/* import com.TryCatch.NusaCart.dto.TokoDTO; */
+
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
 import com.TryCatch.NusaCart.dto.UserRegisterDTO;
 import com.TryCatch.NusaCart.dto.UserBasicDTO;
@@ -72,20 +73,20 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
 
+        // Always delete any existing refresh token for this user (regardless of login status)
+        refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.flush(); 
+        log.info("Existing refresh tokens deleted for user: {}", user.getEmail());
+
+        // Update user login status
         user.setLogin(true);
         user.setLastLogin(LocalDateTime.now());
         UserEntity currentUser = userRepository.save(user);
 
-        //Ntar disini tambah logic untuk cek tokenrefresh dlu, kalau masih ada langsung lemparkan, kalau ga ada baru generate
-       
-        // Delete any existing refresh token for this user
-        refreshTokenRepository.deleteByUser(currentUser);
-        refreshTokenRepository.flush(); 
-
-        // Generate access token
+        // Generate new access token
         String access_token = jwtUtil.generateToken(currentUser);
         
-        // Generate refresh token
+        // Generate new refresh token
         String refresh_token = jwtUtil.generateRefreshToken(currentUser);
         
         // Get token expiration time
@@ -95,7 +96,7 @@ public class AuthService {
         // Create response with both tokens using the new constructor
         AuthResponseDTO response = new AuthResponseDTO(access_token, refresh_token, expires_in, new UserBasicDTO(currentUser), "Login berhasil");
         
-        log.info("User {} berhasil login", user.getEmail());
+        log.info("User {} berhasil login dengan token baru", user.getEmail());
         
         return response;
     }
@@ -126,10 +127,10 @@ public class AuthService {
         
         SecurityContextHolder.clearContext();
         
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Logout berhasil");
-        response.put("status", "success");
-        return response;
+        Map<String, String> responseMap = new HashMap<>();
+        responseMap.put("status", "success");
+        responseMap.put("message", "Logout berhasil");
+        return responseMap;
     }
 
     @Transactional

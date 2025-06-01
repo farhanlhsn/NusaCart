@@ -2,14 +2,15 @@ package com.TryCatch.NusaCart.dto;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)  // Exclude null fields dari JSON response
 public class AuthResponseDTO {
     private String status = "success";
     private String message;
@@ -35,6 +36,15 @@ public class AuthResponseDTO {
         this.user = user;
         this.message = message;
         this.tokenType = "Bearer";
+        this.status = "success";
+    }
+    
+    // Constructor khusus untuk cookie-based login (tanpa token di response body)
+    public AuthResponseDTO(UserBasicDTO user, String message, LocalDateTime expires_in) {
+        this.user = user;
+        this.message = message;
+        this.expires_in = expires_in;
+        this.tokenType = "Cookie";  
         this.status = "success";
     }
 }

@@ -3,20 +3,15 @@ import useAuthStore from '../stores/authStore';
 // import { useNavigate } from 'react-router-dom'; // Tidak digunakan di sini
 
 const api = axios.create({
-  baseURL: 'http://localhost:6060', 
+  baseURL: 'http://localhost:6060',
+  withCredentials: true  // Pastikan cookies dikirim
 });
 
-// Request interceptor
+// Request interceptor - HAPUS Authorization header logic
 api.interceptors.request.use(
   (config) => {
-    const { accessToken } = useAuthStore.getState();
-    console.log('[Request Interceptor] Token from store:', accessToken); // LOG 1
-    if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
-      console.log('[Request Interceptor] Authorization header set with token from store.'); // LOG 2
-    }
-    // Jika header sudah diatur manual oleh response interceptor untuk retry, jangan timpa jika store belum update
-    // Namun, untuk sekarang kita biarkan logika ini untuk melihat perilakunya.
+    // Jangan set Authorization header, biarkan cookies yang handle
+    console.log('[Request Interceptor] Using cookies for authentication');
     return config;
   },
   (error) => {
@@ -24,7 +19,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor - Update untuk handle cookie-based refresh
 api.interceptors.response.use(
   (response) => {
     return response;
@@ -37,49 +32,29 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    console.log('[Response Interceptor] Error status:', error.response?.status); // LOG 3
-    console.log('[Response Interceptor] Original request URL:', originalRequest.url); // LOG 4
-    console.log('[Response Interceptor] Original request _retry flag:', originalRequest._retry); // LOG 5
+    console.log('[Response Interceptor] Error status:', error.response?.status);
+    console.log('[Response Interceptor] Original request URL:', originalRequest.url);
 
-    const { refreshToken, login, logout, user: currentUser } = useAuthStore.getState();
-
+    // Untuk 401 errors, coba refresh token via cookies
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      console.log('[Response Interceptor] Attempting token refresh. Current refreshToken:', refreshToken); // LOG 6
+      console.log('[Response Interceptor] Attempting token refresh via cookies...');
 
-      if (refreshToken) {
-        try {
-          console.log('[Response Interceptor] Calling /api/auth/refresh...');
-          const refreshResponse = await axios.post('http://localhost:6060/api/auth/refresh', {
-            refresh_token: refreshToken,
-          });
+      try {
+        const refreshResponse = await axios.post('http://localhost:6060/api/auth/refresh', {}, {
+          withCredentials: true  // Gunakan cookies untuk refresh
+        });
 
-          const { access_token: newAccessToken, refresh_token: newRefreshToken } = refreshResponse.data;
-          console.log('[Response Interceptor] Refresh successful. New accessToken:', newAccessToken); // LOG 7
-          
-          login({ 
-            accessToken: newAccessToken,  
-            refreshToken: newRefreshToken, 
-            user: currentUser 
-          });
-          console.log('[Response Interceptor] Called authStore.login(). State after login call:', useAuthStore.getState().accessToken); // LOG 8
-          
-          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          console.log('[Response Interceptor] Original request header updated for retry.'); // LOG 9
-          
-          console.log('[Response Interceptor] Retrying original request...');
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error('[Response Interceptor] Failed to refresh token:', refreshError.response?.data || refreshError.message); // LOG 10
-          logout();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      } else {
-        console.log('[Response Interceptor] No refresh token available. Logging out.'); // LOG 11
-        logout();
+        console.log('[Response Interceptor] Refresh successful via cookies');
+        
+        // Retry original request dengan cookies yang sudah diupdate
+        console.log('[Response Interceptor] Retrying original request...');
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error('[Response Interceptor] Failed to refresh token:', refreshError.response?.data || refreshError.message);
+        // Redirect ke login jika refresh gagal
         window.location.href = '/login';
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);

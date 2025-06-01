@@ -65,7 +65,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories").hasRole("SELLER") // POST to create a category
                 .requestMatchers("/api/categories/{idCategory}").hasRole("SELLER") // PUT/DELETE to update/delete a category
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
-                .requestMatchers("/**").permitAll() //Hapus ini ya nanti
+                //.requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()
             );
             
