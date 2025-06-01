@@ -27,6 +27,7 @@ public class OrderEntity {
 
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "address_id", nullable = false)
     private AddressEntity address;
 }

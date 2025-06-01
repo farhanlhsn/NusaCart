@@ -14,6 +14,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.upload.dir:./uploads/profiles}") 
     private String uploadDir;
 
+    //tambhahin param path disini
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Mengekspos direktori upload sebagai resource yang dapat diakses
