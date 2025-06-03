@@ -33,16 +33,8 @@ public class CartService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<CartResponseDTO> getUserCart() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
-            log.error("Gagal mendapatkan cart: user tidak terautentikasi");
-            throw new RuntimeException("User harus login terlebih dahulu");
-        }
-        
-        UserEntity user = (UserEntity) authentication.getPrincipal();
-        log.info("Registering seller for user: {}", user.getEmail());
+    public List<CartResponseDTO> getUserCart(int username) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
         return cartRepository.findByUser(user).stream().map(cart -> {
             CartResponseDTO dto = new CartResponseDTO();
             dto.setId(cart.getId());
@@ -54,15 +46,8 @@ public class CartService {
         }).collect(Collectors.toList());
     }
 
-    public void addToCart(CartCreateDTO dto) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
-            log.error("Gagal mendapatkan cart: user tidak terautentikasi");
-            throw new RuntimeException("User harus login terlebih dahulu");
-        }
-        
-        UserEntity user = (UserEntity) authentication.getPrincipal();
+    public void addToCart(int username, CartCreateDTO dto) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
         ProductEntity product = productRepository.findByProductId(dto.getProductId()).orElseThrow();
 
         CartEntity cart = new CartEntity();
