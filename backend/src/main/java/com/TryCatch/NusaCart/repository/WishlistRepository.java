@@ -1,5 +1,6 @@
 package com.TryCatch.NusaCart.repository;
 
+import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.entity.WishlistEntity;
 
 import java.util.Optional;
@@ -11,5 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface WishlistRepository extends JpaRepository<WishlistEntity, Integer> {
 
     Optional<WishlistEntity> findById(Integer id);
+
+    Optional<WishlistEntity> findByUserId(UserEntity userId);
 }
 

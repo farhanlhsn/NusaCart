@@ -33,7 +33,7 @@ public class WishlistEntity {
 
     @OneToOne
     @JoinColumn(name = "user_id",  nullable = false, referencedColumnName = "userId")
-    private Integer userId;
+    private UserEntity userId;
 
     @ManyToMany
     @JoinTable(
@@ -49,7 +49,6 @@ public class WishlistEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // JPA Callback Methods
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -64,14 +63,4 @@ public class WishlistEntity {
     public void removeFromWishlist(ProductEntity product) {
         this.products.remove(product);
     }
-
-    // Getters & Setters
-    public Integer getWishlistId() { return wishlistId; }
-    public void setWishlistId(Integer wishlistId) { this.wishlistId = wishlistId; }
-
-    public Integer getUserId() { return userId; }
-    public void setUserId(Integer userId) { this.userId = userId; }
-
-    public List<ProductEntity> getProducts() { return products; }
-    public void setProducts(List<ProductEntity> products) { this.products = products; }
 }
