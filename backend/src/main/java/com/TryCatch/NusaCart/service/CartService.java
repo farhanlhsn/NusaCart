@@ -27,8 +27,8 @@ public class CartService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<CartResponseDTO> getUserCart(String username) {
-        UserEntity user = userRepository.findByUsername(username).orElseThrow();
+    public List<CartResponseDTO> getUserCart(int username) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
         return cartRepository.findByUser(user).stream().map(cart -> {
             CartResponseDTO dto = new CartResponseDTO();
             dto.setId(cart.getId());
@@ -40,8 +40,8 @@ public class CartService {
         }).collect(Collectors.toList());
     }
 
-    public void addToCart(String username, CartCreateDTO dto) {
-        UserEntity user = userRepository.findByUsername(username).orElseThrow();
+    public void addToCart(int username, CartCreateDTO dto) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
         ProductEntity product = productRepository.findByProductId(dto.getProductId()).orElseThrow();
 
         CartEntity cart = new CartEntity();
