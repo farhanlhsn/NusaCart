@@ -9,13 +9,19 @@ import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.repository.CartRepository;
 import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.UserRepository;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class CartService {
 
     @Autowired
@@ -27,8 +33,16 @@ public class CartService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<CartResponseDTO> getUserCart(String username) {
-        UserEntity user = userRepository.findByUsername(username).orElseThrow();
+    public List<CartResponseDTO> getUserCart() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            log.error("Gagal mendapatkan cart: user tidak terautentikasi");
+            throw new RuntimeException("User harus login terlebih dahulu");
+        }
+        
+        UserEntity user = (UserEntity) authentication.getPrincipal();
+        log.info("Registering seller for user: {}", user.getEmail());
         return cartRepository.findByUser(user).stream().map(cart -> {
             CartResponseDTO dto = new CartResponseDTO();
             dto.setId(cart.getId());
@@ -40,8 +54,15 @@ public class CartService {
         }).collect(Collectors.toList());
     }
 
-    public void addToCart(String username, CartCreateDTO dto) {
-        UserEntity user = userRepository.findByUsername(username).orElseThrow();
+    public void addToCart(CartCreateDTO dto) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            log.error("Gagal mendapatkan cart: user tidak terautentikasi");
+            throw new RuntimeException("User harus login terlebih dahulu");
+        }
+        
+        UserEntity user = (UserEntity) authentication.getPrincipal();
         ProductEntity product = productRepository.findByProductId(dto.getProductId()).orElseThrow();
 
         CartEntity cart = new CartEntity();

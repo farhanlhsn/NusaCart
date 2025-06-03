@@ -18,12 +18,12 @@ public class CartController {
 
     @GetMapping
     public List<CartResponseDTO> getCart(Principal principal) {
-        return cartService.getUserCart(principal.getName());
+        return cartService.getUserCart();
     }
 
     @PostMapping
     public void addToCart(@RequestBody CartCreateDTO dto, Principal principal) {
-        cartService.addToCart(principal.getName(), dto);
+        cartService.addToCart(dto);
     }
 
     @DeleteMapping("/{id}")
