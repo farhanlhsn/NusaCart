@@ -22,7 +22,6 @@ public class AddressController {
         this.addressService = addressService;
     }
 
-    // GET semua alamat
     @GetMapping
     public ResponseEntity<List<AddressDTO>> getAllAddresses() {
         log.info("Fetching all addresses for current user");
@@ -30,17 +29,13 @@ public class AddressController {
         return ResponseEntity.ok(addresses);
     }
 
-    // POST buat alamat baru
     @PostMapping("/new_address")
     public ResponseEntity<AddressDTO> addAddress(@RequestBody @Valid AddressDTO dto) {
         AddressDTO created = addressService.createAddress(dto);
         return ResponseEntity.ok(created);
     }
 
-
-
-    // PUT update alamat pake ID
-    @PutMapping("update_address/{addressId}")
+    @PutMapping("/update_address/{addressId}")
     public ResponseEntity<AddressDTO> updateAddress(
             @PathVariable Integer addressId,
             @Valid @RequestBody AddressDTO dto
@@ -50,7 +45,6 @@ public class AddressController {
         return ResponseEntity.ok(updated);
     }
 
-    // DELETE hapus alamat pake ID
     @DeleteMapping("/remove_address/{addressId}")
     public ResponseEntity<Void> deleteAddress(@PathVariable Integer addressId) {
         log.info("Deleting address with ID {}", addressId);
@@ -58,7 +52,6 @@ public class AddressController {
         return ResponseEntity.noContent().build();
     }
 
-    // PUT atur alamat utama
     @PutMapping("/set_main/{addressId}")
     public ResponseEntity<String> setAsMainAddress(@PathVariable Integer addressId) {
         log.info("Setting address {} as main", addressId);
