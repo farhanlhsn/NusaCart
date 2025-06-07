@@ -7,6 +7,7 @@ import axios from "axios";
 axios.defaults.baseURL = "http://localhost:6060";
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

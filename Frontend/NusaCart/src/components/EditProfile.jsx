@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import useAuthStore from '../stores/authStore';
 import api from '../services/api';
+import ImageUpload from './ImageUpload';
 
 const EditProfile = ({ onClose }) => {
   const { user, login } = useAuthStore();
   const [formData, setFormData] = useState({
-    firstName: user?.name?.split(' ')[0] || '',
-    lastName: user?.name?.split(' ')[1] || '',
+    name: user?.name || '',
     email: user?.email || '',
+    phoneNumber: user?.phoneNumber || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -15,7 +16,6 @@ const EditProfile = ({ onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,43 +25,18 @@ const EditProfile = ({ onClose }) => {
     }));
   };
 
-  const handleProfilePictureClick = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    setIsLoading(true);
-    try {
-      const response = await api.post('/api/user/change_Profile_Picture', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.status === 200) {
-        // Update user data in store with new profile picture
-        login({
-          ...useAuthStore.getState(),
-          user: {
-            ...user,
-            profilePicture: response.data.profilePicture
-          }
-        });
-        setSuccess('Foto profil berhasil diperbarui');
-        setTimeout(() => setSuccess(''), 3000);
+  const handleImageUpdate = (newImageUrl, responseData) => {
+    // Update user state dengan foto profil baru
+    const currentState = useAuthStore.getState();
+    login({
+      ...currentState,
+      user: {
+        ...currentState.user,
+        profilePicture: newImageUrl
       }
-    } catch (error) {
-      setError('Gagal mengunggah foto profil');
-      setTimeout(() => setError(''), 3000);
-    } finally {
-      setIsLoading(false);
-    }
+    });
+    setSuccess('Foto profil berhasil diperbarui dan dikompres');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const handleSubmit = async (e) => {
@@ -69,7 +44,6 @@ const EditProfile = ({ onClose }) => {
     setError('');
     setSuccess('');
     
-    // Validasi password jika diisi
     if (formData.newPassword) {
       if (formData.newPassword !== formData.confirmPassword) {
         setError('Password baru dan konfirmasi password tidak cocok');
@@ -84,26 +58,27 @@ const EditProfile = ({ onClose }) => {
     setIsLoading(true);
     try {
       const updateData = {
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        name: formData.name,
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
       };
 
-      // Tambahkan password jika diubah
       if (formData.newPassword) {
         updateData.currentPassword = formData.currentPassword;
         updateData.newPassword = formData.newPassword;
+        updateData.confirmPassword = formData.confirmPassword;
       }
 
-      const response = await api.put('/api/user/profile', updateData);
+      const response = await api.put('/api/user/update_profile', updateData);
       
       if (response.status === 200) {
-        // Update user data in store
         login({
           ...useAuthStore.getState(),
           user: {
             ...user,
             name: updateData.name,
-            email: updateData.email
+            email: updateData.email,
+            phoneNumber: updateData.phoneNumber
           }
         });
         setSuccess('Profil berhasil diperbarui');
@@ -113,10 +88,13 @@ const EditProfile = ({ onClose }) => {
         }, 2000);
       }
     } catch (error) {
-      if (error.response?.status === 401) {
-        setError('Password saat ini tidak valid');
+      console.error('Update profile error:', error);
+      if (error.response?.status === 400) {
+        setError(error.response.data.message || 'Data tidak valid');
       } else if (error.response?.status === 409) {
-        setError('Email sudah digunakan');
+        setError('Email sudah digunakan oleh pengguna lain');
+      } else if (error.response?.data?.message) {
+        setError(error.response.data.message);
       } else {
         setError('Terjadi kesalahan saat memperbarui profil');
       }
@@ -129,30 +107,14 @@ const EditProfile = ({ onClose }) => {
     <div className="bg-[#E64646] rounded-3xl shadow-xl p-6 max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-white text-2xl font-bold">Edit Profil</h2>
-        <div className="flex items-center">
-          <span className="text-white mr-4">Ganti Foto Profil</span>
-          <div 
-            className="w-12 h-12 bg-white rounded-full cursor-pointer flex items-center justify-center overflow-hidden"
-            onClick={handleProfilePictureClick}
-          >
-            {user?.profilePicture ? (
-              <img 
-                src={`http://localhost:6060${user.profilePicture}`} 
-                alt="Profile" 
-                className="w-full h-full object-cover" 
-              />
-            ) : (
-              <span className="text-gray-400">+</span>
-            )}
-          </div>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            className="hidden" 
-            accept="image/*" 
-          />
-        </div>
+        <ImageUpload
+          currentImageUrl={user?.profilePicture}
+          onImageUpdate={handleImageUpdate}
+          imageType="profile"
+          size="medium"
+          label="Ganti Foto Profil"
+          className="flex-row-reverse gap-2"
+        />
       </div>
 
       {error && (
@@ -168,34 +130,19 @@ const EditProfile = ({ onClose }) => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-white text-sm mb-2">Nama Depan</label>
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl bg-white text-black focus:outline-none"
-              placeholder="Md"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div>
-            <label className="block text-white text-sm mb-2">Nama Belakang</label>
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl bg-white text-black focus:outline-none"
-              placeholder="Rimel"
-              disabled={isLoading}
-            />
-          </div>
+      <div className="mb-4">
+          <label className="block text-white text-sm mb-2">Nama</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full px-4 py-3 rounded-2xl bg-white text-black focus:outline-none"
+            placeholder="Rimel"
+            required
+            disabled={isLoading}
+          />
         </div>
-
         <div className="mb-4">
           <label className="block text-white text-sm mb-2">Email</label>
           <input
@@ -206,6 +153,19 @@ const EditProfile = ({ onClose }) => {
             className="w-full px-4 py-3 rounded-2xl bg-white text-black focus:outline-none"
             placeholder="rimel1111@gmail.com"
             required
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-white text-sm mb-2">Nomor Telepon</label>
+          <input
+            type="tel"
+            name="phoneNumber"
+            value={formData.phoneNumber}
+            onChange={handleChange}
+            className="w-full px-4 py-3 rounded-2xl bg-white text-black focus:outline-none"
+            placeholder="08123456789"
             disabled={isLoading}
           />
         </div>
