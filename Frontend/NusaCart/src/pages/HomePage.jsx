@@ -5,21 +5,15 @@ import { useNavigate } from "react-router-dom";
 import EditProfile from "../components/EditProfile"; // Import komponen EditProfile
 
 export default function HomePage() {
-    const { logout, accessToken, user } = useAuthStore();
+    const { logout, user } = useAuthStore();
     const navigate = useNavigate();
     const [showEditProfile, setShowEditProfile] = useState(false); // State untuk menampilkan/menyembunyikan EditProfile
     
     const handleLogoutSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Gunakan instance api yang sudah diimpor dengan token
-            await api.post("/api/auth/logout", {}, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
+            await api.post("/api/auth/logout");
             
-            // Panggil fungsi logout dari zustand
             logout();
             navigate("/login");
         } catch (error) {

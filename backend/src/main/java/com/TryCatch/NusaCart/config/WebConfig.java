@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Value("${app.upload.dir:./uploads/profiles}") 
+    @Value("${app.upload.dir:./uploads}") 
     private String uploadDir;
 
     //tambhahin param path disini
@@ -21,8 +21,8 @@ public class WebConfig implements WebMvcConfigurer {
         Path uploadPath = Paths.get(uploadDir);
         String uploadAbsolutePath = uploadPath.toFile().getAbsolutePath();
         
-        // Ubah handler agar lebih spesifik
-        registry.addResourceHandler("/uploads/profiles/**") 
+        // Handler untuk semua subdirektori uploads
+        registry.addResourceHandler("/uploads/**") 
                 .addResourceLocations("file:" + uploadAbsolutePath + "/")
                 .setCachePeriod(3600); // Cache selama 1 jam 
     }

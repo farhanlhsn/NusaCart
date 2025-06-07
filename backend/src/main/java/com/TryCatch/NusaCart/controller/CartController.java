@@ -18,7 +18,7 @@ public class CartController {
 
     @GetMapping
     public List<CartResponseDTO> getCart(Principal principal) {
-        return cartService.getUserCart(principal.getName());
+        return cartService.getUserCart(principal.getName);
     }
 
     @PostMapping

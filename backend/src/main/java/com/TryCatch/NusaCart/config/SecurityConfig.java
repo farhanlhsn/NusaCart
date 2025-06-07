@@ -48,8 +48,9 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthEntryPoint))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/auth/**", "/error", "/favicon.ico").permitAll()
+                .requestMatchers("/api/auth/**", "/error", "/favicon.ico", "/favicon.png").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll() // Allow access to uploaded files
                 .requestMatchers("/api/toko").permitAll() // Public endpoints for viewing stores
                 .requestMatchers("/api/toko/{idToko}").permitAll() // Public endpoint for viewing a specific store
                 .requestMatchers("/api/toko/search").permitAll() // Public endpoint for searching stores
@@ -64,6 +65,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/toko/{idToko}").hasRole("SELLER") // PUT/DELETE to update/delete a store
                 .requestMatchers("/api/categories").hasRole("SELLER") // POST to create a category
                 .requestMatchers("/api/categories/{idCategory}").hasRole("SELLER") // PUT/DELETE to update/delete a category
+                .requestMatchers("/api/images/**").hasAnyRole("USER", "SELLER") // Image upload endpoints
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
                 //.requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()

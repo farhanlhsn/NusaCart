@@ -13,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.TryCatch.NusaCart.dto.AuthResponseDTO;
-import com.TryCatch.NusaCart.dto.ForgetPasswordDTO;
 import com.TryCatch.NusaCart.dto.SellerRegisterDTO;
 
 import com.TryCatch.NusaCart.dto.UserLoginDTO;
@@ -28,8 +27,10 @@ import com.TryCatch.NusaCart.repository.TokoRepository;
 import com.TryCatch.NusaCart.repository.UserRepository;
 import com.TryCatch.NusaCart.security.JwtUtil;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 
 @Service
 @Slf4j
@@ -67,11 +68,14 @@ public class AuthService {
         
         log.info("Login attempt for email: {}", request.getEmail());
         
-        UserEntity user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid password");
+        Optional<UserEntity> userOpt = userRepository.findByEmail(request.getEmail());
+        
+        // Check if user exists and password matches
+        if (!userOpt.isPresent() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
+            throw new IllegalArgumentException("Email/Password salah");
         }
+        
+        UserEntity user = userOpt.get();
 
         // Always delete any existing refresh token for this user (regardless of login status)
         refreshTokenRepository.deleteByUser(user);
@@ -107,7 +111,7 @@ public class AuthService {
         
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
             log.error("Logout gagal: user tidak terautentikasi");
-            throw new RuntimeException("User sedang tidak login");
+            throw new AuthenticationCredentialsNotFoundException("User sedang tidak login");
         }
         
         UserEntity user = (UserEntity) authentication.getPrincipal();
@@ -115,7 +119,7 @@ public class AuthService {
         log.info("Logout attempt for email: {}", email);
         
         UserEntity currentUser = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("User dengan email " + email + " tidak ditemukan"));
             
         currentUser.setLogin(false);
         userRepository.save(currentUser);
@@ -136,7 +140,7 @@ public class AuthService {
     @Transactional
     public AuthResponseDTO register(UserRegisterDTO request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email sudah terdaftar");
+            throw new IllegalArgumentException("Email " + request.getEmail() + " sudah terdaftar");
         }
 
         UserEntity user = new UserEntity();
@@ -159,7 +163,7 @@ public class AuthService {
         
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
             log.error("Registrasi seller gagal: user tidak terautentikasi");
-            throw new RuntimeException("User harus login terlebih dahulu");
+            throw new AuthenticationCredentialsNotFoundException("User harus login terlebih dahulu");
         }
         
         UserEntity user = (UserEntity) authentication.getPrincipal();
@@ -167,12 +171,12 @@ public class AuthService {
         
         // Check if email toko already exists
         if (tokoRepository.existsByEmailToko(request.getEmailToko())) {
-            throw new IllegalArgumentException("Email toko sudah digunakan");
+            throw new IllegalArgumentException("Email toko " + request.getEmailToko() + " sudah digunakan");
         }
         
         // Check if nama toko already exists
         if (tokoRepository.existsByNamaToko(request.getNamaToko())) {
-            throw new IllegalArgumentException("Nama toko sudah digunakan");
+            throw new IllegalArgumentException("Nama toko " + request.getNamaToko() + " sudah digunakan");
         }
         
         // Add SELLER role to user if they don't have it yet
@@ -207,20 +211,20 @@ public class AuthService {
         
         // Validate refresh token
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
-            throw new RuntimeException("Invalid or expired refresh token");
+            throw new IllegalArgumentException("Refresh token tidak valid atau sudah kadaluarsa");
         }
         
         try {
             // Get user from refresh token
             Optional<RefreshTokenEntity> tokenEntityOpt = refreshTokenRepository.findByToken(refreshToken);
             if (!tokenEntityOpt.isPresent()) {
-                throw new RuntimeException("Refresh token tidak valid atau sudah tidak berlaku");
+                throw new IllegalArgumentException("Refresh token tidak valid atau sudah tidak berlaku");
             }
             
             RefreshTokenEntity oldTokenEntity = tokenEntityOpt.get();
             UserEntity user = oldTokenEntity.getUser();
             if (user == null) {
-                throw new RuntimeException("User tidak ditemukan untuk refresh token ini");
+                throw new EntityNotFoundException("User tidak ditemukan untuk refresh token ini");
             }
 
             // Invalidate (delete) the old refresh token
@@ -244,6 +248,9 @@ public class AuthService {
             // Return response with new access token and NEW refresh token
             return new AuthResponseDTO(newAccessToken, newRefreshTokenString, expiresIn, new UserBasicDTO(user), "Token berhasil diperbaharui");
             
+        } catch (IllegalArgumentException | EntityNotFoundException e) {
+            // Re-throw specific exceptions to be handled by GlobalExceptionHandler
+            throw e;
         } catch (Exception e) {
             log.error("Error refreshing token: {}", e.getMessage());
             throw new RuntimeException("Error saat memperbaharui token: " + e.getMessage());
