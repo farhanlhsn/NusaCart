@@ -3,9 +3,11 @@ import Layout from "./layout";
 import LoginPage from "./LoginPage";
 import ErrorPage from "./ErrorPage";
 import UserRegisterPage from "./UserRegisterPage";
-import UserSuccesRegisterPage from "./UserSuccesRegisterPage";
 import HomePage from "./HomePage";
-/* import ForgotPasswordPage from "./ForgotPasswordPage"; */
+import ForgetPasswordPage from "./ForgetPasswordPage";
+import Profile from "./profile";
+import Tentang from "./tentang";
+import Kontak from "./kontak";
 
 export const router = createBrowserRouter([
   {
@@ -15,20 +17,15 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <UserRegisterPage />,
-    children: [
-      {
-        path: "success",
-        element: <UserSuccesRegisterPage />,
-      }
-    ],
   },
-  /* {
+  {
     path: "/forgot",
-    element: <ForgotPasswordPage />,
-  }, */
+    element: <ForgetPasswordPage />,
+  },
   {
     path: "/",
     element: <Layout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
@@ -37,6 +34,18 @@ export const router = createBrowserRouter([
       {
         path: "/home",
         element: <HomePage />,
+      },
+      {
+        path: "/profile",
+        element: <Profile />,
+      },
+      {
+        path: "/about",
+        element: <Tentang />,
+      },
+      {
+        path: "/contact",
+        element: <Kontak />,
       },
     ],
   },

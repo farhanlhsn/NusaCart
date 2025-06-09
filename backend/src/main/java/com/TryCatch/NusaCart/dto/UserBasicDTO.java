@@ -19,6 +19,7 @@ public class UserBasicDTO {
     private String email;               
     private Set<UserRole> role;             
     private String profilePicture;
+    private String phoneNumber;
     
     // Constructor untuk mengkonversi User Entity ke DTO
     public UserBasicDTO(UserEntity user) {
@@ -27,5 +28,6 @@ public class UserBasicDTO {
         this.role = user.getRoles();
         this.profilePicture = user.getProfilePicture();
         this.email = user.getEmail();
+        this.phoneNumber = user.getPhoneNumber();
     }
 }

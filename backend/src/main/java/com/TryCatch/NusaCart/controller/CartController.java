@@ -18,8 +18,8 @@ public class CartController {
     }
 
     @GetMapping
-    public List<CartResponseDTO> getCart() {
-        return cartService.getUserCart();
+    public List<CartResponseDTO> getCart(Principal principal) {
+        return cartService.getUserCart(principal.getName);
     }
 
     @PostMapping

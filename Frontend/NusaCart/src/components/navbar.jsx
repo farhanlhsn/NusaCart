@@ -10,11 +10,14 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import "./navbar.css";
+import useAuthStore from "../stores/authStore";
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
+  const { user } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
+  const navigate = useNavigate();
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +26,11 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const profileImageUrl = user && user.profilePicture 
+        ? `http://localhost:6060${user.profilePicture}` 
+        : null; 
+
 
   return (
     <div className={`navbar-container ${isScrolled ? 'shadow-lg' : ''}`}>
@@ -37,9 +45,9 @@ export default function Navbar() {
             <a href="/"><img src={logo} alt="NusaCart Logo" className="logo" /></a>
             {/* Desktop Menu */}
             <div className="desktop-menu">
-              <a href="#" className="menu-item">Beranda</a>
-              <a href="#" className="menu-item">Kontak</a>
-              <a href="#" className="menu-item">Tentang</a>
+              <a href="/" className="menu-item">Beranda</a>
+              <a href="/contact" className="menu-item">Kontak</a>
+              <a href="/about" className="menu-item">Tentang</a>
             </div>
           </div>
 
@@ -73,8 +81,12 @@ export default function Navbar() {
               <button className="icon-button">
                 <ChatBubbleLeftRightIcon className="icon" />
               </button>
-              <button className="icon-button">
-                <UserIcon className="icon" />
+              <button className="icon-button" onClick={() => navigate('/profile')}>
+                {profileImageUrl ? (
+                    <img src={profileImageUrl} alt="Profile" className="object-cover w-10 h-10 rounded-full ring-1 ring-black/50" />
+                ) : (
+                    <UserIcon className="icon" />
+                )}
               </button>
             </div>
             {/* Mobile Menu Button */}
