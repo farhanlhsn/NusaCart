@@ -2,12 +2,14 @@ package com.TryCatch.NusaCart.service;
 
 import com.TryCatch.NusaCart.dto.WishlistDTO;
 import com.TryCatch.NusaCart.entity.ProductEntity;
+import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.entity.WishlistEntity;
 import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.WishlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,6 +54,22 @@ public class WishlistService {
     public WishlistDTO createWishlist(WishlistDTO dto) {
         WishlistEntity entity = convertToEntity(dto);
         return convertToDTO(wishlistRepository.save(entity));
+    }
+
+    public WishlistDTO getOrCreateWishlistByUserId(UserEntity userId) {
+        // Cari wishlist berdasarkan userId
+        WishlistEntity wishlist = wishlistRepository.findByUserId(userId)
+                .orElse(null);
+
+        // Jika tidak ada, buat wishlist baru
+        if (wishlist == null) {
+            wishlist = new WishlistEntity();
+            wishlist.setUserId(userId);
+            wishlist.setProducts(new ArrayList<>());
+            wishlist = wishlistRepository.save(wishlist);
+        }
+
+        return convertToDTO(wishlist);
     }
 
     public WishlistDTO updateWishlist(Integer id, WishlistDTO dto) {

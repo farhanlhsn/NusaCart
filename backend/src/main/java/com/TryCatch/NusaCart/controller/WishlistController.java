@@ -1,6 +1,7 @@
 package com.TryCatch.NusaCart.controller;
 
 import com.TryCatch.NusaCart.dto.WishlistDTO;
+import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.service.WishlistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +21,14 @@ public class WishlistController {
         return ResponseEntity.ok(wishlistService.getAllWishlists());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<WishlistDTO> getWishlistById(@PathVariable Integer id) {
-        return ResponseEntity.ok(wishlistService.getWishlistById(id));
-    }
-
     @PostMapping
     public ResponseEntity<WishlistDTO> createWishlist(@RequestBody WishlistDTO dto) {
         return ResponseEntity.ok(wishlistService.createWishlist(dto));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<WishlistDTO> getWishlistById(@PathVariable UserEntity id) {
+        return ResponseEntity.ok(wishlistService.getOrCreateWishlistByUserId(id));
     }
 
     @PutMapping("/{id}")
