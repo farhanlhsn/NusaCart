@@ -315,6 +315,7 @@ export default function UserRegisterPage() {
 				src={logo}
 				alt="NusaCart Logo"
 				className="w-40 md:w-80 mb-8"
+				onClick={() => navigate("/")}
 			/>
 			<div className="flex flex-col md:flex-row items-center justify-center bg-white rounded-3xl md:gap-[87px] w-full max-w-[1200px]">
 				{/* Kiri: Ilustrasi - Hide on success step */}

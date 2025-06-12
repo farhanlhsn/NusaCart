@@ -27,6 +27,11 @@ public class CartController {
         cartService.addToCart(dto);
     }
 
+    @PutMapping("/{id}")
+    public void updateCartItemQuantity(@PathVariable Long id, @RequestParam Integer quantity) {
+        cartService.updateCartItemQuantity(id, quantity);
+    }
+
     @DeleteMapping("/{id}")
     public void removeFromCart(@PathVariable Long id) {
         cartService.removeCartItem(id);

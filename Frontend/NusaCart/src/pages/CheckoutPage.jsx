@@ -6,7 +6,7 @@ export default function CheckoutPage() {
     const navigate = useNavigate();
     
     // Zustand store
-    const { checkoutItems, updateQuantity, clearCheckoutItems } = useCartStore();
+    const { checkoutItems, updateQuantity, clearCheckoutItems, createOrder } = useCartStore();
     
     const [kuponCode, setKuponCode] = useState("");
     const [selectedPayment, setSelectedPayment] = useState("");
@@ -52,29 +52,30 @@ export default function CheckoutPage() {
         console.log("Applying coupon:", kuponCode);
     };
 
-    const handleCreateOrder = () => {
+    const handleCreateOrder = async () => {
         if (!selectedPayment) {
             alert("Silakan pilih metode pembayaran");
             return;
         }
         
         const orderData = {
-            items: checkoutItems,
             shippingAddress,
             paymentMethod: selectedPayment,
-            subtotal,
-            total,
-            kuponCode
+            addressId: 1, // Default address ID - should be dynamic based on user's addresses
+            address: shippingAddress.address
         };
         
-        console.log("Creating order:", orderData);
-        
-        // Clear checkout items after successful order
-        clearCheckoutItems();
-        
-        // Navigate to success page or process payment
-        alert("Pesanan berhasil dibuat!");
-        navigate('/cart'); // Redirect back to cart
+        try {
+            const result = await createOrder(orderData);
+            console.log("Order created successfully:", result);
+            
+            // Navigate to success page or process payment
+            alert("Pesanan berhasil dibuat!");
+            navigate('/cart'); // Redirect back to cart
+        } catch (error) {
+            console.error("Failed to create order:", error);
+            alert("Gagal membuat pesanan. Silakan coba lagi.");
+        }
     };
 
     const paymentMethods = [
@@ -111,9 +112,19 @@ export default function CheckoutPage() {
                 {/* Breadcrumb */}
                 <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <span>Beranda</span>
+                        <button 
+                            onClick={() => navigate('/')}
+                            className="hover:text-red-600 cursor-pointer transition-colors"
+                        >
+                            Beranda
+                        </button>
                         <span>|</span>
-                        <span>Keranjang</span>
+                        <button 
+                            onClick={() => navigate('/cart')}
+                            className="hover:text-red-600 cursor-pointer transition-colors"
+                        >
+                            Keranjang
+                        </button>
                         <span>|</span>
                         <span className="text-red-600 font-medium">Checkout</span>
                     </div>
@@ -165,7 +176,6 @@ export default function CheckoutPage() {
                                                             />
                                                             <div>
                                                                 <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                                                                <p className="text-sm text-gray-500">{item.desc}</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center space-x-4">

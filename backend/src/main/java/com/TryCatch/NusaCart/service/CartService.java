@@ -47,6 +47,19 @@ public class CartService {
             dto.setProductName(item.getProduct().getProductName());
             dto.setQuantity(item.getQuantity());
             dto.setPrice(item.getProduct().getPrice());
+            dto.setImageUrl(item.getProduct().getImageUrl());
+            
+            // Store information
+            dto.setStoreId(item.getProduct().getToko().getIdToko());
+            dto.setStoreName(item.getProduct().getToko().getNamaToko());
+            // Use only city/regency from the full address
+            String fullAddress = item.getProduct().getToko().getAlamatToko();
+            // Extract city/regency - assume it's after the street and before province
+            // For now, we'll use a simple approach to get the city part
+            String[] addressParts = fullAddress.split(",");
+            String cityPart = addressParts.length > 1 ? addressParts[1].trim() : fullAddress;
+            dto.setStoreLocation(cityPart);
+            
             return dto;
         }).collect(Collectors.toList());
     }
@@ -79,6 +92,24 @@ public class CartService {
             newItem.setQuantity(dto.getQuantity());
             cartItemRepository.save(newItem);
         }
+    }
+
+    public void updateCartItemQuantity(Long itemId, Integer quantity) {
+        if (quantity < 1) {
+            throw new RuntimeException("Quantity must be at least 1");
+        }
+        
+        CartItemEntity cartItem = cartItemRepository.findById(itemId)
+            .orElseThrow(() -> new RuntimeException("Cart item not found"));
+        
+        // Verify cart item belongs to current user
+        UserEntity currentUser = getCurrentUser();
+        if (!cartItem.getCart().getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new RuntimeException("Unauthorized access to cart item");
+        }
+        
+        cartItem.setQuantity(quantity);
+        cartItemRepository.save(cartItem);
     }
 
     public void removeCartItem(Long itemId) {

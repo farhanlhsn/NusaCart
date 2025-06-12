@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/Logo.png";
 
 export default function tentang() {
+    const navigate = useNavigate();
     const [imageErrors, setImageErrors] = useState({});
     // Data team members
     const teamMembers = [
@@ -42,7 +44,12 @@ export default function tentang() {
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <span>Beranda</span>
+                        <button 
+                            onClick={() => navigate('/')}
+                            className="hover:text-red-600 cursor-pointer transition-colors"
+                        >
+                            Beranda
+                        </button>
                         <span>|</span>
                         <span className="text-red-600 font-medium">Tentang</span>
                     </div>
