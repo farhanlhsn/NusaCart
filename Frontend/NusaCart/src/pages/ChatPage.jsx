@@ -15,6 +15,7 @@ import {
     Flag,
     User
 } from "lucide-react";
+import ReportChat from '../components/ReportChat';
 
 export default function ChatPage() {
     const messagesEndRef = useRef(null);
@@ -27,6 +28,24 @@ export default function ChatPage() {
     const [showChatList, setShowChatList] = useState(true);
     const [showDropdown, setShowDropdown] = useState(false);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
+
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+    const handleOpenReport = () => {
+        setIsReportModalOpen(true);
+    };
+
+    const handleCloseReport = () => {
+        setIsReportModalOpen(false);
+    };
+
+    const handleSubmitReport = (reportData) => {
+        console.log('Report submitted:', reportData);
+        // Here you would typically send the report data to your backend API
+        // Example API call:
+        // submitReport(reportData);
+        alert('Laporan berhasil dikirim!');
+    };
 
     // Dummy chat data
     const chats = [
@@ -231,13 +250,6 @@ export default function ChatPage() {
         // You would typically show a confirmation dialog here
     };
 
-    const handleReportUser = () => {
-        // Handle report user logic
-        console.log('Report user:', currentChat?.name);
-        setShowDropdown(false);
-        // You would typically show a report form here
-    };
-
     const handleViewProfile = () => {
         // Handle view profile logic
         console.log('View profile:', currentChat?.name);
@@ -407,12 +419,18 @@ export default function ChatPage() {
                                             Blokir Pengguna
                                         </button>
                                         <button
-                                            onClick={handleReportUser}
+                                            onClick={handleOpenReport}
                                             className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
                                         >
                                             <Flag className="w-4 h-4 mr-3" />
                                             Laporkan Pengguna
                                         </button>
+
+                                        <ReportChat
+                                            isOpen={isReportModalOpen}
+                                            onClose={handleCloseReport}
+                                            onSubmit={handleSubmitReport}
+                                        />
                                     </div>
                                 )}
                             </div>
