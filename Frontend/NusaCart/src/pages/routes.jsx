@@ -10,6 +10,12 @@ import Tentang from "./tentang";
 import Kontak from "./kontak";
 import CartPage from "./CartPage";
 import CheckoutPage from "./CheckoutPage";
+import WishlistPage from "./WishlistPage";
+import ChatPage from "./ChatPage";
+import FAQ from "./FAQ";
+import Terms from "./Terms";
+import Privacy from "./Privacy";
+
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -49,12 +55,36 @@ export const router = createBrowserRouter([
         element: <Kontak />,
       },
       {
+        path: "/kontak",
+        element: <Kontak />,
+      },
+      {
         path: "/cart",
         element: <CartPage />,
       },
       {
         path: "/checkout",
         element: <CheckoutPage />,
+      },
+      {
+        path: "/wishlist",
+        element: <WishlistPage />,
+      },
+      {
+        path: "/chat",
+        element: <ChatPage />,
+      },
+      {
+        path: "/faq",
+        element: <FAQ />,
+      },
+      {
+        path: "/terms",
+        element: <Terms />,
+      },
+      {
+        path: "/privacy",
+        element: <Privacy />,
       },
     ],
   },

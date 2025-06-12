@@ -47,9 +47,9 @@ const useCartStore = create(
           
           // Transform API response to frontend format
           const cartItems = response.data.map(item => ({
-            id: item.id,
+            id: item.id, // This is cart item ID
+            productId: item.productId, // This is product ID
             name: item.productName,
-            desc: item.description || "Produk berkualitas", 
             price: item.price,
             qty: item.quantity,
             checked: false,
@@ -116,13 +116,24 @@ const useCartStore = create(
           return get().removeProductFromCart(cartItemId);
         }
 
-        // For now, we'll update locally since backend doesn't have update endpoint
-        // You might want to add PUT /api/cart/{id} endpoint in backend
-        set(state => ({
-          products: state.products.map(p => 
-            p.id === cartItemId ? { ...p, qty: newQuantity } : p
-          )
-        }));
+        set({ isLoading: true, error: null });
+        try {
+          await api.put(`/api/cart/${cartItemId}?quantity=${newQuantity}`);
+          
+          // Update local state
+          set(state => ({
+            products: state.products.map(p => 
+              p.id === cartItemId ? { ...p, qty: newQuantity } : p
+            ),
+            isLoading: false
+          }));
+        } catch (error) {
+          console.error('Error updating cart quantity:', error);
+          set({ 
+            error: error.response?.data?.message || 'Failed to update cart quantity',
+            isLoading: false 
+          });
+        }
       },
 
       // Local Actions (for UI interactions)
@@ -167,6 +178,38 @@ const useCartStore = create(
         const checkedItems = get().getCheckedItems();
         set({ checkoutItems: checkedItems });
         return checkedItems;
+      },
+
+      createOrder: async (orderData) => {
+        set({ isLoading: true, error: null });
+        try {
+          // Transform checkout items to order format
+          const orderItems = get().checkoutItems.map(item => ({
+            productId: item.productId || item.id, // Use productId if available, fallback to id
+            quantity: item.qty
+          }));
+          
+          const orderPayload = {
+            address: orderData.shippingAddress?.address || orderData.address,
+            addressId: orderData.addressId || 1, // Default address ID, should be dynamic
+            items: orderItems
+          };
+          
+          const response = await api.post('/api/orders', orderPayload);
+          
+          // Clear checkout items and refresh cart after successful order
+          set({ checkoutItems: [], isLoading: false });
+          get().fetchCartItems(); // Refresh cart to remove ordered items
+          
+          return response.data;
+        } catch (error) {
+          console.error('Error creating order:', error);
+          set({ 
+            error: error.response?.data?.message || 'Failed to create order',
+            isLoading: false 
+          });
+          throw error;
+        }
       },
 
       clearCheckoutItems: () => set({ checkoutItems: [] }),

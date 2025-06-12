@@ -75,6 +75,7 @@ export default function LoginPage() {
 				src={logo}
 				alt="NusaCart Logo"
 				className="w-40 md:w-80"
+				onClick={() => navigate("/")}
 			/>
 			{/* Container dua kolom */}
 			<div className="flex flex-col md:flex-row items-center justify-center bg-white rounded-3xl md:gap-[87px] w-full max-w-[1200px] md:h-[600px]">
