@@ -66,19 +66,16 @@ export default function Navbar() {
           {/* Kanan: Icon */}
           <div className="nav-right">
             <div className="desktop-icons">
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/wishlist')}>
                 <HeartIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/notification')}>
                 <BellIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/cart')}>
                 <ShoppingCartIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/chat')}>
                 <ChatBubbleLeftRightIcon className="icon" />
               </button>
               <button className="icon-button" onClick={() => navigate('/profile')}>
@@ -124,21 +121,18 @@ export default function Navbar() {
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <HeartIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Wishlist</span>
               </button>
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <BellIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Notifikasi</span>
               </button>
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <ShoppingCartIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Keranjang</span>
               </button>

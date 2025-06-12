@@ -1,12 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import EditProfile from "../components/EditProfile";
 import useAuthStore from "../stores/authStore";	
 
 
 export default function Profile() {
-    const { user } = useAuthStore();
+    const navigate = useNavigate();
+    const { user, logout, isLoggedIn } = useAuthStore();
     const [showEditProfile, setShowEditProfile] = useState(true);
     const [activeMenu, setActiveMenu] = useState('profile');
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!isLoggedIn) {
+            navigate('/login');
+        }
+    }, [isLoggedIn, navigate]);
 
     const menuItems = [
         { id: 'profile', label: 'Profil Saya', active: true },
@@ -22,6 +32,23 @@ export default function Profile() {
         return menuItem ? menuItem.label : 'Profil Saya';
     };
 
+    // Handle logout
+    const handleLogout = async () => {
+        if (window.confirm('Apakah Anda yakin ingin keluar?')) {
+            setIsLoggingOut(true);
+            try {
+                // Add a small delay to show loading state
+                await new Promise(resolve => setTimeout(resolve, 500));
+                logout();
+                navigate('/login');
+            } catch (error) {
+                console.error('Logout error:', error);
+            } finally {
+                setIsLoggingOut(false);
+            }
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-4">
 
@@ -31,7 +58,12 @@ export default function Profile() {
                 <div className="ml-6 mr-6 mt-3">
                     <div className="flex justify-between items-center text-sm">
                         <div className="flex items-center space-x-2 text-gray-600">
-                            <span>Beranda</span>
+                            <button 
+                                onClick={() => navigate('/')}
+                                className="hover:text-red-600 cursor-pointer transition-colors"
+                            >
+                                Beranda
+                            </button>
                             <span>|</span>
                             <span>Akun Saya</span>
                             <span>|</span>
@@ -82,11 +114,30 @@ export default function Profile() {
                             ))}
                         </ul>
 
-                        <button className="w-full bg-red-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+                        <button className="w-full bg-red-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2 mb-3">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                             </svg>
                             Buat Toko
+                        </button>
+
+                        <button 
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                                isLoggingOut 
+                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                    : 'bg-gray-500 hover:bg-gray-600'
+                            } text-white`}
+                        >
+                            {isLoggingOut ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            )}
+                            {isLoggingOut ? 'Keluar...' : 'Logout'}
                         </button>
                     </div>
 
