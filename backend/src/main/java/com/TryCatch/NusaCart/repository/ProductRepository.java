@@ -14,7 +14,7 @@ import com.TryCatch.NusaCart.entity.TokoEntity;
 @Repository
 public interface ProductRepository extends JpaRepository<ProductEntity, Integer> {
     
-    Optional<ProductEntity> findByProductId(Long productId);
+    Optional<ProductEntity> findByProductId(Integer productId);
     
     List<ProductEntity> findByToko(TokoEntity toko);
     
