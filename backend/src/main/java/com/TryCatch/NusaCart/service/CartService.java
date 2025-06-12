@@ -27,6 +27,7 @@ public class CartService {
     @Autowired
     private ProductRepository productRepository;
 
+<<<<<<< Updated upstream
 
     private UserEntity getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -41,6 +42,11 @@ public class CartService {
         CartEntity cart = cartOpt.get();
 
         return cart.getItems().stream().map(item -> {
+=======
+    public List<CartResponseDTO> getUserCart(Integer username) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
+        return cartRepository.findByUser(user).stream().map(cart -> {
+>>>>>>> Stashed changes
             CartResponseDTO dto = new CartResponseDTO();
             dto.setId(item.getId());
             dto.setProductId(item.getProduct().getProductId());
@@ -51,10 +57,16 @@ public class CartService {
         }).collect(Collectors.toList());
     }
 
+<<<<<<< Updated upstream
     public void addToCart(CartCreateDTO dto) {
         UserEntity user = getCurrentUser();
         ProductEntity product = productRepository.findByProductId(dto.getProductId())
             .orElseThrow(() -> new RuntimeException("Product not found"));
+=======
+    public void addToCart(Integer username, CartCreateDTO dto) {
+        UserEntity user = userRepository.findByUserId(username).orElseThrow();
+        ProductEntity product = productRepository.findByProductId(dto.getProductId()).orElseThrow();
+>>>>>>> Stashed changes
 
         // Find or create cart
         CartEntity cart = cartRepository.findByUser(user).orElseGet(() -> {
