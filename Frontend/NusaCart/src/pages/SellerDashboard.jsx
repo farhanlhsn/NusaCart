@@ -1,0 +1,560 @@
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../stores/authStore';
+import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import api from '../services/api';
+import ImageUpload from '../components/ImageUpload';
+import useSellerStore from '../stores/sellerStore';
+
+const SellerDashboard = () => {
+  const navigate = useNavigate();
+  const { user, isLoggedIn } = useAuthStore();
+  const {
+    store,
+    products,
+    loading,
+    error,
+    currentPage,
+    searchTerm,
+    categories,
+    showProductModal,
+    editProduct,
+    showStoreModal,
+    storeImage,
+    showCategoryModal,
+    newCategoryId,
+    totalPages,
+    setCurrentPage,
+    setSearchTerm,
+    setShowProductModal,
+    setEditProduct,
+    setShowStoreModal,
+    setStoreImage,
+    setShowCategoryModal,
+    setNewCategoryId,
+    setCategories,
+    fetchStoreAndProducts
+  } = useSellerStore();
+  const [activeMenu, setActiveMenu] = React.useState('produk');
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    
+    // Better role checking - handle both array and set formats
+    const hasSellerRole = user?.role && (
+      Array.isArray(user.role) 
+        ? user.role.includes('SELLER')
+        : (user.role.has?.('SELLER') || Object.values(user.role).includes('SELLER') || user.role.includes?.('SELLER'))
+    );
+    
+    if (!hasSellerRole) {
+      alert('Anda belum terdaftar sebagai seller. Silakan daftar sebagai seller terlebih dahulu di halaman profil.');
+      navigate('/profile');
+      return;
+    }
+    
+    fetchStoreAndProducts(user, currentPage, searchTerm);
+    // eslint-disable-next-line
+  }, [isLoggedIn, user, currentPage, searchTerm, fetchStoreAndProducts]);
+
+  const handleAddProduct = () => {
+    setEditProduct(null);
+    setShowProductModal(true);
+  };
+  const handleEditProduct = (product) => {
+    setEditProduct(product);
+    setShowProductModal(true);
+  };
+  const handleDeleteProduct = async (id) => {
+    const productId = typeof id === 'object' ? id.productId : id;
+    if (!window.confirm('Yakin hapus produk ini?')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/api/products/${productId}`);
+      fetchStoreAndProducts();
+    } catch (err) {
+      setError('Gagal menghapus produk');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleEditStore = () => {
+    setShowStoreModal(true);
+  };
+  const handleStoreImageUpdate = (newImageUrl) => {
+    setStoreImage(newImageUrl);
+  };
+
+  const sidebarItems = [
+    { id: 'beranda', label: 'Beranda', icon: '🏠' },
+    { id: 'produk', label: 'Produk', icon: '📦', active: true },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'analisis', label: 'Analisis', icon: '📊' },
+    { id: 'help', label: 'Help', icon: '❓' },
+  ];
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount).replace('IDR', 'Rp');
+  };
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProducts = products.slice(startIndex, endIndex);
+
+  // Modal Product Form
+  const ProductModal = ({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
+    const [form, setForm] = React.useState(product || {
+      productName: '',
+      description: '',
+      price: 0,
+      stock: 0,
+      idCategory: '',
+      imageUrl: '',
+      isActive: true,
+    });
+    const [saving, setSaving] = React.useState(false);
+    const [err, setErr] = React.useState('');
+    React.useEffect(() => {
+      if (product) setForm(product);
+    }, [product]);
+    React.useEffect(() => {
+      if (newCategoryId) {
+        setForm(f => ({ ...f, idCategory: newCategoryId }));
+      }
+    }, [newCategoryId]);
+    const handleChange = (e) => {
+      const { name, value, type, checked } = e.target;
+      setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+    };
+    const handleImage = (url) => {
+      setForm({ ...form, imageUrl: url });
+    };
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setSaving(true);
+      setErr('');
+      try {
+        const payload = {
+          productName: form.productName,
+          description: form.description,
+          price: Number(form.price),
+          stock: Number(form.stock),
+          idToko: tokoId,
+          imageUrl: form.imageUrl,
+          idCategory: form.idCategory ? Number(form.idCategory) : undefined,
+          isActive: form.isActive,
+        };
+        if (product && product.productId) {
+          await api.put(`/api/products/${product.productId}`, payload);
+        } else {
+          await api.post('/api/products', payload);
+        }
+        onSave();
+        if (onCategoryAdded) {
+          onCategoryAdded(form);
+        }
+      } catch (error) {
+        setErr('Gagal menyimpan produk');
+      } finally {
+        setSaving(false);
+      }
+    };
+    if (!show) return null;
+    return (
+      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
+          <h2 className="text-2xl font-bold mb-6 text-center text-red-500">{product ? 'Edit Produk' : 'Tambah Produk'}</h2>
+          {err && <div className="text-red-500 mb-4 text-center">{err}</div>}
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Nama Produk</label>
+            <input name="productName" value={form.productName} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Deskripsi</label>
+            <textarea name="description" value={form.description} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" rows={2} />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Harga</label>
+            <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Stok</label>
+            <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+          </div>
+          <div className="mb-4 flex items-center gap-2">
+            <label className="block mb-2 font-medium">Kategori</label>
+            <select name="idCategory" value={form.idCategory} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition">
+              <option value="">Pilih Kategori</option>
+              {categories.map(cat => (
+                <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
+              ))}
+            </select>
+            <button type="button" onClick={() => setShowCategoryModal(true)} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition">Tambah Kategori</button>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Gambar Produk</label>
+            <ImageUpload imageType="product" currentImageUrl={form.imageUrl} onImageUpdate={handleImage} />
+          </div>
+          <div className="mb-4 flex items-center gap-2">
+            <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="isActive" />
+            <label htmlFor="isActive">Aktifkan Produk</label>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  // Modal Store Form
+  const StoreModal = ({ show, onClose, onSave, store }) => {
+    const [form, setForm] = React.useState(store || { namaToko: '', profilePictureToko: '' });
+    const [saving, setSaving] = React.useState(false);
+    const [err, setErr] = React.useState('');
+    const handleChange = (e) => {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    };
+    const handleImage = (url) => {
+      setForm({ ...form, profilePictureToko: url });
+    };
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setSaving(true);
+      setErr('');
+      try {
+        await api.put(`/api/toko/${store.idToko}`, form);
+        onSave();
+      } catch (error) {
+        setErr('Gagal menyimpan toko');
+      } finally {
+        setSaving(false);
+      }
+    };
+    if (!show) return null;
+    return (
+      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
+          <h2 className="text-2xl font-bold mb-6 text-center text-red-500">Edit Toko</h2>
+          {err && <div className="text-red-500 mb-4 text-center">{err}</div>}
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Nama Toko</label>
+            <input name="namaToko" value={form.namaToko} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Gambar Toko</label>
+            <ImageUpload imageType="store" currentImageUrl={form.profilePictureToko} onImageUpdate={handleImage} />
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  // Modal Tambah Kategori
+  const CategoryModal = ({ show, onClose, onSave }) => {
+    const [newCategoryName, setNewCategoryName] = React.useState('');
+    const [savingCategory, setSavingCategory] = React.useState(false);
+    const [categoryError, setCategoryError] = React.useState('');
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setSavingCategory(true);
+      setCategoryError('');
+      try {
+        const res = await api.post('/api/categories', {
+          namaCategory: newCategoryName,
+          idToko: store.idToko,
+        });
+        setNewCategoryName('');
+        onSave(res.data);
+      } catch (err) {
+        setCategoryError('Gagal menambah kategori');
+      } finally {
+        setSavingCategory(false);
+      }
+    };
+    if (!show) return null;
+    return (
+      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
+          <h2 className="text-2xl font-bold mb-6 text-center text-red-500">Tambah Kategori</h2>
+          {categoryError && <div className="text-red-500 mb-4 text-center">{categoryError}</div>}
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Nama Kategori</label>
+            <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+            <button type="submit" disabled={savingCategory} className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-60">{savingCategory ? 'Menyimpan...' : 'Simpan'}</button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-200">
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <aside className="w-64 min-h-screen flex flex-col bg-white text-black shadow-xl sticky top-0 z-20">
+          <div className="p-8 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-full bg-white border-4 border-red-600 shadow-lg flex items-center justify-center mb-3 overflow-hidden">
+              {store?.profilePictureToko ? (
+                <img src={`http://localhost:6060${store.profilePictureToko}`} alt="Toko" className="w-20 h-20 object-cover rounded-full" />
+              ) : (
+                <span className="text-red-600 font-bold text-2xl">NT</span>
+              )}
+            </div>
+            <h2 className="font-extrabold text-lg text-center mb-1">{store?.namaToko || 'Nama Toko'}</h2>
+            <button onClick={handleEditStore} className="text-xs text-white bg-red-500 hover:bg-white hover:text-red-600 border border-white rounded-full px-4 py-1 mt-2 transition font-bold shadow">Edit Toko</button>
+          </div>
+          <nav className="flex-1 px-4 space-y-2">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveMenu(item.id)}
+                className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 ${
+                  activeMenu === item.id
+                    ? 'bg-red-50 text-red-600 border-red-600 shadow scale-105'
+                    : 'text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105'
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="font-medium">{item.label}</span>
+                {item.id !== 'produk' && item.id !== 'beranda' && (
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                )}
+              </button>
+            ))}
+          </nav>
+          {/* User Profile at Bottom */}
+          <div className="mt-auto p-6 border-t border-white/20 flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center overflow-hidden">
+              {user?.profilePicture ? (
+                <img src={`http://localhost:6060${user.profilePicture}`} alt={user.name} className="w-12 h-12 object-cover rounded-full" />
+              ) : (
+                <span className="text-red-600 font-bold text-lg">{user?.name?.slice(0,2) || 'U'}</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-black text-sm">{user.name}</p>
+              <button
+                onClick={() => navigate('/profile')}
+                className="text-xs text-black/80 hover:text-red-500 mt-1"
+              >
+                Ke Profil
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="sticky top-0 z-10 bg-white/90 shadow-sm border-b p-6 flex justify-end">
+            <div className="flex items-center space-x-2 text-gray-700">
+              <span className="text-orange-500">👋</span>
+              <span className="font-bold">Halo, {user.name}</span>
+            </div>
+          </header>
+
+          {/* Store Info Card & Statistik */}
+          <section className="max-w-4xl mx-auto w-full mt-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col md:flex-row items-center gap-8 mb-8">
+              <div className="w-28 h-28 rounded-full bg-red-100 border-4 border-red-500 shadow flex items-center justify-center overflow-hidden">
+                {store?.profilePictureToko ? (
+                  <img src={`http://localhost:6060${store.profilePictureToko}`} alt="Toko" className="w-28 h-28 object-cover rounded-full" />
+                ) : (
+                  <span className="text-red-600 font-bold text-3xl">{store?.namaToko?.slice(0,2) || 'NT'}</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <h1 className="text-3xl font-extrabold mb-2 text-gray-900">{store?.namaToko || 'Nama Toko'}</h1>
+                <div className="flex flex-wrap gap-4 mb-2">
+                  <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold text-sm shadow">Produk: {products.length}</div>
+                  <div className="bg-black text-white px-4 py-2 rounded-lg font-bold text-sm shadow">Penjualan: 0</div>
+                  <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold text-sm shadow">Kategori: {categories.length}</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Product Management Section */}
+          <section className="max-w-5xl mx-auto w-full px-2 md:px-0">
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-16">
+              {/* Section Header */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Daftar Produk</h2>
+                  <p className="text-red-500 text-sm mt-1">Atur produkmu disini</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari Produk"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading/Error */}
+              {loading && <div className="p-6 text-center text-gray-500">Memuat data...</div>}
+              {error && <div className="p-6 text-center text-red-500">{error}</div>}
+
+              {/* Product List: Card view on mobile, table on desktop */}
+              {!loading && !error && (
+                <>
+                  {/* Card view for mobile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-6">
+                    {products.map((product) => (
+                      <div key={product.productId} className="bg-gray-50 rounded-xl shadow hover:shadow-xl transition-all p-4 flex flex-col gap-2 border border-gray-100">
+                        <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-2 flex items-center justify-center">
+                          {product.imageUrl ? (
+                            <img src={`http://localhost:6060${product.imageUrl}`} alt={product.productName} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">IMG</div>
+                          )}
+                        </div>
+                        <div className="font-bold text-lg text-gray-900 line-clamp-2">{product.productName}</div>
+                        <div className="text-sm text-gray-500 mb-1">{product.category}</div>
+                        <div className="text-base font-bold text-red-600">{formatCurrency(product.price)}</div>
+                        <div className="text-xs text-gray-500 mb-2">Stok: {product.stock}</div>
+                        <div className="text-xs text-gray-500 mb-2">{product.description && product.description.length > 30 ? product.description.slice(0, 30) + '...' : product.description}</div>
+                        <div className="flex gap-2 mt-auto">
+                          <button onClick={() => handleEditProduct(product)} className="flex-1 bg-red-500 text-white py-2 rounded-lg font-bold hover:bg-red-600 transition">Edit</button>
+                          <button onClick={() => handleDeleteProduct(product)} className="flex-1 bg-gray-200 text-red-500 py-2 rounded-lg font-bold hover:bg-red-100 transition">Hapus</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Table view for desktop */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full rounded-xl overflow-hidden">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Produk</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Stok</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Harga</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Deskripsi</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {products.map((product) => (
+                          <tr key={product.productId} className="hover:bg-red-50 transition-all">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0 mr-4 overflow-hidden">
+                                  {product.imageUrl ? (
+                                    <img src={`http://localhost:6060${product.imageUrl}`} alt={product.productName} className="w-14 h-14 rounded-lg object-cover" />
+                                  ) : (
+                                    <div className="w-14 h-14 bg-gray-300 rounded-lg flex items-center justify-center text-gray-500 text-xs">IMG</div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="text-base font-bold text-gray-900">{product.productName}</div>
+                                  <div className="text-xs text-gray-500">{product.category}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900">{product.stock}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-base text-red-600 font-bold">{formatCurrency(product.price)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.description && product.description.length > 30 ? product.description.slice(0, 30) + '...' : product.description}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
+                              <button onClick={() => handleEditProduct(product)} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-600 transition">Edit</button>
+                              <button onClick={() => handleDeleteProduct(product)} className="bg-gray-200 text-red-500 px-4 py-2 rounded-lg font-bold hover:bg-red-100 transition">Hapus</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* Pagination */}
+              <div className="pt-6 flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  Menampilkan data {(currentPage-1)*itemsPerPage+1} hingga {Math.min(currentPage*itemsPerPage, products.length)} dari {products.length} entri
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  {Array.from({length: totalPages}, (_, i) => i+1).slice(0, 5).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 border rounded ${currentPage === page ? 'bg-red-500 text-white border-red-500' : 'hover:bg-gray-50'}`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  {totalPages > 5 && <span className="px-2">...</span>}
+                  {totalPages > 5 && (
+                    <button className="px-3 py-1 border rounded hover:bg-gray-50">{totalPages}</button>
+                  )}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            {/* Floating Add Product Button */}
+            <button
+              onClick={handleAddProduct}
+              className="fixed bottom-8 right-8 z-30 bg-red-600 hover:bg-black text-white rounded-full shadow-lg p-5 flex items-center gap-2 text-lg font-bold transition-all duration-200 shadow-red-300 hover:scale-110"
+            >
+              <Plus className="w-6 h-6" />
+              <span className="hidden md:inline">Tambah Produk</span>
+            </button>
+          </section>
+        </main>
+      </div>
+
+      {/* Modals */}
+      <ProductModal show={showProductModal} onClose={() => setShowProductModal(false)} onSave={() => { setShowProductModal(false); fetchStoreAndProducts(); setNewCategoryId(null); }} product={editProduct} tokoId={store?.idToko} onCategoryAdded={cat => {
+        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
+          setCategories(res.data.content || []);
+        });
+      }} newCategoryId={newCategoryId} />
+      <StoreModal show={showStoreModal} onClose={() => setShowStoreModal(false)} onSave={() => { setShowStoreModal(false); fetchStoreAndProducts(); }} store={store} />
+      <CategoryModal show={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSave={cat => {
+        setShowCategoryModal(false);
+        setNewCategoryId(cat.idCategory);
+        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
+          setCategories(res.data.content || []);
+        });
+      }} />
+    </div>
+  );
+};
+
+export default SellerDashboard; 

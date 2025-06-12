@@ -13,7 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
 @Configuration
 public class JwtConfig {
     
-    @Value("${jwt.expiration:180000}") //untuk testing dibuat 3 menit
+    @Value("${jwt.expiration:36000000}") 
     private long jwtExpiration;
 
     private String hardcodedJwtSecretString = "Sinergi Bangun Negeri Maju dalam ilmu pengetahuan Satukan tekad bersama padukan langkah Bawa bangsa menuju garis depan";

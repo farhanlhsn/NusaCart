@@ -10,11 +10,15 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import "./navbar.css";
+import useAuthStore from "../stores/authStore";
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
+  const { user } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +27,11 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const profileImageUrl = user && user.profilePicture 
+        ? `http://localhost:6060${user.profilePicture}` 
+        : null; 
+
 
   return (
     <div className={`navbar-container ${isScrolled ? 'shadow-lg' : ''}`}>
@@ -37,44 +46,57 @@ export default function Navbar() {
             <a href="/"><img src={logo} alt="NusaCart Logo" className="logo" /></a>
             {/* Desktop Menu */}
             <div className="desktop-menu">
-              <a href="#" className="menu-item">Beranda</a>
-              <a href="#" className="menu-item">Kontak</a>
-              <a href="#" className="menu-item">Tentang</a>
+              <a href="/" className="menu-item">Beranda</a>
+              <a href="/contact" className="menu-item">Kontak</a>
+              <a href="/about" className="menu-item">Tentang</a>
             </div>
           </div>
 
           {/* Tengah: Search */}
           <div className="search-container">
-            <div className="search-box">
+            <form
+              className="search-box"
+              onSubmit={e => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                }
+              }}
+            >
               <input
                 type="text"
-                placeholder="Apa yang Anda cari?"
+                placeholder="Cari produk atau toko..."
                 className="search-input"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
-              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
-            </div>
+              <button type="submit" className="search-icon-button" tabIndex={-1}>
+                <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+              </button>
+            </form>
           </div>
 
           {/* Kanan: Icon */}
           <div className="nav-right">
             <div className="desktop-icons">
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/wishlist')}>
                 <HeartIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/notification')}>
                 <BellIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/cart')}>
                 <ShoppingCartIcon className="icon" />
-                <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/chat')}>
                 <ChatBubbleLeftRightIcon className="icon" />
               </button>
-              <button className="icon-button">
-                <UserIcon className="icon" />
+              <button className="icon-button" onClick={() => navigate('/profile')}>
+                {profileImageUrl ? (
+                    <img src={profileImageUrl} alt="Profile" className="object-cover w-10 h-10 rounded-full ring-1 ring-black/50" />
+                ) : (
+                    <UserIcon className="icon" />
+                )}
               </button>
             </div>
             {/* Mobile Menu Button */}
@@ -93,14 +115,27 @@ export default function Navbar() {
         <div className="mobile-menu">
           <div className="mobile-menu-content">
             {/* Search Bar */}
-            <div className="mobile-search-box">
+            <form
+              className="mobile-search-box"
+              onSubmit={e => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                  setIsMenuOpen(false);
+                }
+              }}
+            >
               <input
                 type="text"
-                placeholder="Apa yang Anda cari?"
+                placeholder="Cari produk atau toko..."
                 className="mobile-search-input"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
-              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
-            </div>
+              <button type="submit" className="search-icon-button" tabIndex={-1}>
+                <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+              </button>
+            </form>
             {/* Menu Items */}
             <div className="mobile-menu-items">
               <a href="#" className="mobile-menu-item">Beranda</a>
@@ -112,21 +147,18 @@ export default function Navbar() {
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <HeartIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Wishlist</span>
               </button>
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <BellIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Notifikasi</span>
               </button>
               <button className="mobile-icon-button">
                 <div className="icon-container">
                   <ShoppingCartIcon className="icon" />
-                  <span className="notification-badge">0</span>
                 </div>
                 <span className="icon-label">Keranjang</span>
               </button>

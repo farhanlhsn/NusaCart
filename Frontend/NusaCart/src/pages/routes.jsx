@@ -3,9 +3,21 @@ import Layout from "./layout";
 import LoginPage from "./LoginPage";
 import ErrorPage from "./ErrorPage";
 import UserRegisterPage from "./UserRegisterPage";
-import UserSuccesRegisterPage from "./UserSuccesRegisterPage";
 import HomePage from "./HomePage";
-/* import ForgotPasswordPage from "./ForgotPasswordPage"; */
+import ForgetPasswordPage from "./ForgetPasswordPage";
+import Profile from "./profile";
+import Tentang from "./tentang";
+import Kontak from "./kontak";
+import CartPage from "./CartPage";
+import CheckoutPage from "./CheckoutPage";
+import WishlistPage from "./WishlistPage";
+import ChatPage from "./ChatPage";
+import FAQ from "./FAQ";
+import Terms from "./Terms";
+import Privacy from "./Privacy";
+import SellerDashboard from "./SellerDashboard";
+import SearchPage from './SearchPage';
+import ProductsPage from './ProductsPage';
 
 export const router = createBrowserRouter([
   {
@@ -15,20 +27,15 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <UserRegisterPage />,
-    children: [
-      {
-        path: "success",
-        element: <UserSuccesRegisterPage />,
-      }
-    ],
   },
-  /* {
+  {
     path: "/forgot",
-    element: <ForgotPasswordPage />,
-  }, */
+    element: <ForgetPasswordPage />,
+  },
   {
     path: "/",
     element: <Layout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
@@ -37,6 +44,62 @@ export const router = createBrowserRouter([
       {
         path: "/home",
         element: <HomePage />,
+      },
+      {
+        path: "/profile",
+        element: <Profile />,
+      },
+      {
+        path: "/about",
+        element: <Tentang />,
+      },
+      {
+        path: "/contact",
+        element: <Kontak />,
+      },
+      {
+        path: "/kontak",
+        element: <Kontak />,
+      },
+      {
+        path: "/cart",
+        element: <CartPage />,
+      },
+      {
+        path: "/checkout",
+        element: <CheckoutPage />,
+      },
+      {
+        path: "/wishlist",
+        element: <WishlistPage />,
+      },
+      {
+        path: "/chat",
+        element: <ChatPage />,
+      },
+      {
+        path: "/faq",
+        element: <FAQ />,
+      },
+      {
+        path: "/terms",
+        element: <Terms />,
+      },
+      {
+        path: "/privacy",
+        element: <Privacy />,
+      },
+      {
+        path: "/seller",
+        element: <SellerDashboard />,
+      },
+      {
+        path: "/search",
+        element: <SearchPage />,
+      },
+      {
+        path: "/products",
+        element: <ProductsPage />,
       },
     ],
   },
