@@ -23,8 +23,8 @@ public class CartController {
     }
 
     @PostMapping
-    public void addToCart(@RequestBody CartCreateDTO dto) {
-        cartService.addToCart(dto);
+    public void addToCart(@RequestBody CartCreateDTO dto, Principal principal) {
+        cartService.addToCart(principal.getName(), dto);
     }
 
     @DeleteMapping("/{id}")

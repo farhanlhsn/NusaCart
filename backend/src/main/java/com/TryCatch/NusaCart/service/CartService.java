@@ -57,13 +57,7 @@ public class CartService {
         }).collect(Collectors.toList());
     }
 
-<<<<<<< Updated upstream
-    public void addToCart(CartCreateDTO dto) {
-        UserEntity user = getCurrentUser();
-        ProductEntity product = productRepository.findByProductId(dto.getProductId())
-            .orElseThrow(() -> new RuntimeException("Product not found"));
-=======
-    public void addToCart(Integer username, CartCreateDTO dto) {
+    public void addToCart(int username, CartCreateDTO dto) {
         UserEntity user = userRepository.findByUserId(username).orElseThrow();
         ProductEntity product = productRepository.findByProductId(dto.getProductId()).orElseThrow();
 >>>>>>> Stashed changes
