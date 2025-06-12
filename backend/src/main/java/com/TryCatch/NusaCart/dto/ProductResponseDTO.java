@@ -1,6 +1,7 @@
 package com.TryCatch.NusaCart.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.TryCatch.NusaCart.entity.ProductEntity;
 
@@ -21,7 +22,7 @@ public class ProductResponseDTO {
     private Integer stock;
     private Integer idToko;
     private String namaToko;
-    private String imageUrl;
+    private List<String> imageUrls;
     private Integer idCategory;
     private String categoryName;
     private Boolean isActive;
@@ -37,7 +38,7 @@ public class ProductResponseDTO {
         this.stock = product.getStock();
         this.idToko = product.getToko().getIdToko();
         this.namaToko = product.getToko().getNamaToko();
-        this.imageUrl = product.getImageUrl();
+        this.imageUrls = product.getImageUrls();
         
         if (product.getCategory() != null) {
             this.idCategory = product.getCategory().getIdCategory();

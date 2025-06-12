@@ -1,7 +1,10 @@
 package com.TryCatch.NusaCart.dto;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,7 +33,8 @@ public class ProductCreateDTO {
     @NotNull(message = "ID toko tidak boleh kosong")
     private Integer idToko;
     
-    private String imageUrl;
+    @NotEmpty(message = "Produk harus memiliki minimal 1 foto")
+    private List<String> imageUrls;
     
     private Integer idCategory;
     

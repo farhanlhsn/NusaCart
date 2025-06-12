@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/toko").permitAll() // Public endpoints for viewing stores
                 .requestMatchers("/api/toko/{idToko}").permitAll() // Public endpoint for viewing a specific store
                 .requestMatchers("/api/toko/search").permitAll() // Public endpoint for searching stores
+                .requestMatchers("/api/toko/my-stores").hasRole("SELLER")
                 .requestMatchers("/api/categories").permitAll() // Public endpoint for viewing all categories
                 .requestMatchers("/api/categories/{idCategory}").permitAll() // Public endpoint for viewing a specific category
                 .requestMatchers("/api/categories/toko/{idToko}").permitAll() // Public endpoint for viewing categories of a specific store
@@ -67,6 +68,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories/{idCategory}").hasRole("SELLER") // PUT/DELETE to update/delete a category
                 .requestMatchers("/api/images/**").hasAnyRole("USER", "SELLER") // Image upload endpoints
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
+
                 //.requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()
             );
