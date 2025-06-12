@@ -8,7 +8,8 @@ import ForgetPasswordPage from "./ForgetPasswordPage";
 import Profile from "./profile";
 import Tentang from "./tentang";
 import Kontak from "./kontak";
-
+import CartPage from "./CartPage";
+import CheckoutPage from "./CheckoutPage";
 export const router = createBrowserRouter([
   {
     path: "/login",
@@ -46,6 +47,14 @@ export const router = createBrowserRouter([
       {
         path: "/contact",
         element: <Kontak />,
+      },
+      {
+        path: "/cart",
+        element: <CartPage />,
+      },
+      {
+        path: "/checkout",
+        element: <CheckoutPage />,
       },
     ],
   },

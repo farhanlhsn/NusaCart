@@ -74,7 +74,7 @@ export default function Navbar() {
                 <BellIcon className="icon" />
                 <span className="notification-badge">0</span>
               </button>
-              <button className="icon-button">
+              <button className="icon-button" onClick={() => navigate('/cart')}>
                 <ShoppingCartIcon className="icon" />
                 <span className="notification-badge">0</span>
               </button>
