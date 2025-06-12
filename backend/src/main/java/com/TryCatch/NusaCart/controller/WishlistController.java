@@ -53,7 +53,7 @@ public class WishlistController {
     @PostMapping("/{wishlistId}/remove/{productId}")
     public ResponseEntity<WishlistDTO> removeProduct(
             @PathVariable Integer wishlistId,
-            @PathVariable Long productId) {
+            @PathVariable Integer productId) {
         return ResponseEntity.ok(wishlistService.removeProductFromWishlist(wishlistId, productId));
     }
 }

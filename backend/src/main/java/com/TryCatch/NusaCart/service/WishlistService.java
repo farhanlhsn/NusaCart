@@ -76,7 +76,7 @@ public class WishlistService {
         return convertToDTO(wishlistRepository.save(wishlist));
     }
 
-    public WishlistDTO removeProductFromWishlist(Integer wishlistId, Long productId) {
+    public WishlistDTO removeProductFromWishlist(Integer wishlistId, Integer productId) {
         WishlistEntity wishlist = wishlistRepository.findById(wishlistId)
                 .orElseThrow(() -> new RuntimeException("Wishlist not found"));
         ProductEntity product = productRepository.findByProductId(productId)
