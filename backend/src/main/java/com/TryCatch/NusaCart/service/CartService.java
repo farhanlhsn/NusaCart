@@ -27,26 +27,9 @@ public class CartService {
     @Autowired
     private ProductRepository productRepository;
 
-<<<<<<< Updated upstream
-
-    private UserEntity getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (UserEntity) auth.getPrincipal();
-    }
-
-    public List<CartResponseDTO> getUserCart() {
-        UserEntity user = getCurrentUser();
-        Optional<CartEntity> cartOpt = cartRepository.findByUser(user);
-        if (cartOpt.isEmpty()) return List.of();
-
-        CartEntity cart = cartOpt.get();
-
-        return cart.getItems().stream().map(item -> {
-=======
     public List<CartResponseDTO> getUserCart(Integer username) {
         UserEntity user = userRepository.findByUserId(username).orElseThrow();
         return cartRepository.findByUser(user).stream().map(cart -> {
->>>>>>> Stashed changes
             CartResponseDTO dto = new CartResponseDTO();
             dto.setId(item.getId());
             dto.setProductId(item.getProduct().getProductId());
