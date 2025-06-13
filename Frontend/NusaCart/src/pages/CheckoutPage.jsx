@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useCartStore from "../stores/cartStore";
 import useAddressStore from "../stores/addressStore";
-import usePaymentMethodStore from "../stores/paymentMethodStore";
 import useAuthStore from "../stores/authStore";
 import AddressSelectionModal from "../components/AddressSelectionModal";
 
@@ -10,13 +9,11 @@ export default function CheckoutPage() {
     const navigate = useNavigate();
     
     // Zustand stores
-    const { checkoutItems, updateQuantity, clearCheckoutItems, createOrder } = useCartStore();
+    const { checkoutItems, updateCheckoutQuantity, clearCheckoutItems, createOrder } = useCartStore();
     const { addresses, fetchAddresses, loading: addressLoading } = useAddressStore();
-    const { paymentMethods, fetchPaymentMethods } = usePaymentMethodStore();
     const { user, isLoggedIn } = useAuthStore();
     
     const [kuponCode, setKuponCode] = useState("");
-    const [selectedPayment, setSelectedPayment] = useState("");
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [showAddressModal, setShowAddressModal] = useState(false);
 
@@ -51,19 +48,24 @@ export default function CheckoutPage() {
         }
         
         fetchAddresses();
-        fetchPaymentMethods();
-    }, [checkoutItems, isLoggedIn, navigate, fetchAddresses, fetchPaymentMethods]);
+    }, [checkoutItems, isLoggedIn, navigate, fetchAddresses]);
+
+    // Debug data
+    useEffect(() => {
+        console.log('Checkout items:', checkoutItems);
+        console.log('Selected address:', selectedAddress);
+    }, [checkoutItems, selectedAddress]);
     
     // Set default selected address
     useEffect(() => {
         if (addresses.length > 0 && !selectedAddress) {
-            const primaryAddress = addresses.find(addr => addr.isPrimary) || addresses[0];
+            const primaryAddress = addresses.find(addr => addr.isUtama) || addresses[0];
             setSelectedAddress(primaryAddress);
         }
     }, [addresses, selectedAddress]);
 
     const handleQuantityChange = (id, delta) => {
-        updateQuantity(id, delta);
+        updateCheckoutQuantity(id, delta);
     };
 
     const handleApplyKupon = () => {
@@ -77,36 +79,43 @@ export default function CheckoutPage() {
             return;
         }
         
-        if (!selectedPayment) {
-            alert("Silakan pilih metode pembayaran");
+        if (!selectedAddress.addressId) {
+            alert("ID alamat tidak valid. Silakan pilih alamat lain.");
             return;
         }
         
+        console.log('Selected Address:', selectedAddress);
+        
+        // Construct address string as required by backend
+        const addressString = `${selectedAddress.jalan}, ${selectedAddress.kelurahan}, ${selectedAddress.kecamatan}, ${selectedAddress.kotaKabupaten}, ${selectedAddress.provinsi} ${selectedAddress.kodePos}`;
+        
         const orderData = {
-            addressId: selectedAddress.id,
-            paymentMethodId: selectedPayment,
+            address: addressString, // Required by backend validation
+            addressId: selectedAddress.addressId,
+            paymentMethodId: 1, // Default payment method ID - will be selected properly in payment page
             items: checkoutItems.map(item => ({
-                productId: item.id,
-                quantity: item.qty,
-                price: item.price
-            })),
-            subtotal,
-            shippingCost,
-            total
+                productId: item.productId || item.id, // Use productId if available
+                quantity: item.qty
+            }))
         };
+        
+        console.log('Order Data being sent:', orderData);
         
         try {
             const result = await createOrder(orderData);
             console.log("Order created successfully:", result);
             
-            // Navigate to payment page
+            // Navigate to payment page with order details
             navigate('/payment', { 
                 state: { 
                     orderData: {
                         ...result,
+                        orderId: result.orderId || result.id,
                         subtotal,
                         shippingCost,
-                        total
+                        total,
+                        items: checkoutItems,
+                        address: selectedAddress
                     }
                 } 
             });
@@ -166,10 +175,12 @@ export default function CheckoutPage() {
                                     </div>
                                 ) : selectedAddress ? (
                                     <div className="space-y-2">
-                                        <p className="font-semibold text-gray-800">{selectedAddress.label} - {selectedAddress.recipientName}</p>
-                                        <p className="text-gray-600">{selectedAddress.phone}</p>
-                                        <p className="text-gray-600">{selectedAddress.fullAddress}</p>
-                                        {selectedAddress.isPrimary && (
+                                        <p className="font-semibold text-gray-800">{selectedAddress.namaPenerima}</p>
+                                        <p className="text-gray-600">{selectedAddress.phoneNumber}</p>
+                                        <p className="text-gray-600">
+                                            {selectedAddress.jalan}, {selectedAddress.kelurahan}, {selectedAddress.kecamatan}, {selectedAddress.kotaKabupaten}, {selectedAddress.provinsi} {selectedAddress.kodePos}
+                                        </p>
+                                        {selectedAddress.isUtama && (
                                             <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
                                                 Alamat Utama
                                             </span>
@@ -249,65 +260,25 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
-                        {/* Right Side - Payment & Summary */}
+                        {/* Right Side - Summary */}
                         <div className="space-y-6">
-                            {/* Payment Methods */}
+                            {/* Coupon Code */}
                             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-                                <h2 className="text-xl font-bold text-gray-800 mb-6">Metode Pembayaran</h2>
-                                <div className="space-y-4">
-                                    {paymentMethods.length > 0 ? paymentMethods.map(method => (
-                                        <label 
-                                            key={method.id} 
-                                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
-                                        >
-                                            <div className="flex items-center">
-                                                <input
-                                                    type="radio"
-                                                    name="payment"
-                                                    value={method.id}
-                                                    checked={selectedPayment === method.id}
-                                                    onChange={(e) => setSelectedPayment(e.target.value)}
-                                                    className="mr-3"
-                                                />
-                                                <div>
-                                                    <span className="font-medium">{method.name}</span>
-                                                    {method.description && (
-                                                        <p className="text-sm text-gray-500">{method.description}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {method.logo && (
-                                                <img 
-                                                    src={method.logo} 
-                                                    alt={method.name}
-                                                    className="h-8 w-auto object-contain"
-                                                />
-                                            )}
-                                        </label>
-                                    )) : (
-                                        <div className="text-center py-4">
-                                            <p className="text-gray-500">Loading payment methods...</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Coupon Code */}
-                                <div className="mt-6">
-                                    <div className="flex space-x-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Kode Kupon"
-                                            value={kuponCode}
-                                            onChange={(e) => setKuponCode(e.target.value)}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                        />
-                                        <button
-                                            onClick={handleApplyKupon}
-                                            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                        >
-                                            Terapkan
-                                        </button>
-                                    </div>
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Kode Promo</h2>
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Masukkan kode kupon"
+                                        value={kuponCode}
+                                        onChange={(e) => setKuponCode(e.target.value)}
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                    />
+                                    <button
+                                        onClick={handleApplyKupon}
+                                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        Terapkan
+                                    </button>
                                 </div>
                             </div>
 
@@ -333,7 +304,7 @@ export default function CheckoutPage() {
                                     onClick={handleCreateOrder}
                                     className="w-full mt-6 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
                                 >
-                                    Buat Pesanan
+                                    Lanjut ke Pembayaran
                                 </button>
                             </div>
                         </div>
@@ -346,7 +317,7 @@ export default function CheckoutPage() {
                 isOpen={showAddressModal}
                 onClose={() => setShowAddressModal(false)}
                 onSelectAddress={setSelectedAddress}
-                selectedAddressId={selectedAddress?.id}
+                selectedAddressId={selectedAddress?.addressId}
             />
         </div>
     );

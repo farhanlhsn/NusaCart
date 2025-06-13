@@ -39,8 +39,14 @@ const useCartStore = create(
         return products.filter(p => p.checked);
       },
 
+      // Clear error
+      clearError: () => set({ error: null }),
+
       // API Actions
       fetchCartItems: async () => {
+        const currentState = get();
+        if (currentState.isLoading) return; // Prevent concurrent calls
+        
         set({ isLoading: true, error: null });
         try {
           const response = await cartAPI.get();
@@ -59,7 +65,11 @@ const useCartStore = create(
               name: item.storeName,
               location: item.storeLocation
             },
-            image: item.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80"
+            image: item.imageUrl 
+              ? (item.imageUrl.startsWith('http') 
+                 ? item.imageUrl 
+                 : `http://localhost:6060${item.imageUrl}`)
+              : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80"
           }));
           
           set({ products: cartItems, isLoading: false });
@@ -75,13 +85,14 @@ const useCartStore = create(
       addProductToCart: async (productId, quantity = 1) => {
         set({ isLoading: true, error: null });
         try {
-          await cartAPI.add({
+          const response = await cartAPI.add({
             productId: productId,
             quantity: quantity
           });
           
-          // Refresh cart after adding
-          get().fetchCartItems();
+          // If successful, just refresh cart to get updated data
+          // This is acceptable as adding new products is less frequent than updating quantity
+          await get().fetchCartItems();
         } catch (error) {
           console.error('Error adding to cart:', error);
           set({ 
@@ -92,20 +103,21 @@ const useCartStore = create(
       },
 
       removeProductFromCart: async (cartItemId) => {
-        set({ isLoading: true, error: null });
+        // Update local state immediately for better UX
+        set(state => ({
+          products: state.products.filter(p => p.id !== cartItemId)
+        }));
+
         try {
           await cartAPI.remove(cartItemId);
-          
-          // Remove from local state
-          set(state => ({
-            products: state.products.filter(p => p.id !== cartItemId),
-            isLoading: false
-          }));
         } catch (error) {
           console.error('Error removing from cart:', error);
+          
+          // Revert by fetching fresh data if API fails
+          get().fetchCartItems();
+          
           set({ 
-            error: error.response?.data?.message || 'Failed to remove product from cart',
-            isLoading: false 
+            error: error.response?.data?.message || 'Failed to remove product from cart'
           });
         }
       },
@@ -116,22 +128,28 @@ const useCartStore = create(
           return get().removeProductFromCart(cartItemId);
         }
 
-        set({ isLoading: true, error: null });
+        // Update local state immediately for better UX
+        set(state => ({
+          products: state.products.map(p => 
+            p.id === cartItemId ? { ...p, qty: newQuantity } : p
+          )
+        }));
+
         try {
+          // Update in backend without showing loading state
           await cartAPI.updateQuantity(cartItemId, newQuantity);
-          
-          // Update local state
-          set(state => ({
-            products: state.products.map(p => 
-              p.id === cartItemId ? { ...p, qty: newQuantity } : p
-            ),
-            isLoading: false
-          }));
         } catch (error) {
           console.error('Error updating cart quantity:', error);
+          
+          // Revert the local change if API fails
+          const originalProduct = get().products.find(p => p.id === cartItemId);
+          if (originalProduct) {
+            // Fetch fresh data to revert to correct state
+            get().fetchCartItems();
+          }
+          
           set({ 
-            error: error.response?.data?.message || 'Failed to update cart quantity',
-            isLoading: false 
+            error: error.response?.data?.message || 'Failed to update cart quantity'
           });
         }
       },
@@ -168,6 +186,17 @@ const useCartStore = create(
         }
       },
 
+      // Update quantity for checkout items (local state only, no API call)
+      updateCheckoutQuantity: (id, delta) => set((state) => ({
+        checkoutItems: state.checkoutItems.map(item => {
+          if (item.id === id) {
+            const newQuantity = Math.max(1, item.qty + delta);
+            return { ...item, qty: newQuantity };
+          }
+          return item;
+        })
+      })),
+
       removeProduct: (id) => {
         get().removeProductFromCart(id);
       },
@@ -190,10 +219,13 @@ const useCartStore = create(
           }));
           
           const orderPayload = {
-            address: orderData.shippingAddress?.address || orderData.address,
-            addressId: orderData.addressId || 1, // Default address ID, should be dynamic
+            address: orderData.address,
+            addressId: orderData.addressId,
+            paymentMethodId: orderData.paymentMethodId,
             items: orderItems
           };
+          
+          console.log('CartStore sending order payload:', orderPayload);
           
           const response = await orderAPI.place(orderPayload);
           
