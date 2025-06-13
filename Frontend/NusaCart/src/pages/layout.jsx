@@ -2,8 +2,11 @@ import React from "react";
 import Footer from "../components/footer"; 
 import Navbar from "../components/navbar";
 import { Outlet } from "react-router-dom";
+import NotificationSystem, { useNotifications } from "../components/NotificationSystem";
 
 export default function Layout() {
+  const { notifications, removeNotification } = useNotifications();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -11,6 +14,10 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <NotificationSystem 
+        notifications={notifications} 
+        removeNotification={removeNotification} 
+      />
     </div>
   );
 }

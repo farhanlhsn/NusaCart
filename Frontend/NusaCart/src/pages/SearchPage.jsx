@@ -15,13 +15,10 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!q) {
-      setDummy("");
       return;
     }
-    // Untuk development, pakai setDummy. Untuk production, ganti ke fetchSearchResults(q)
-    setDummy(q);
-    // fetchSearchResults(q);
-  }, [q, setDummy, fetchSearchResults]);
+    fetchSearchResults(q);
+  }, [q, fetchSearchResults]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -59,6 +56,7 @@ export default function SearchPage() {
             )}
             {/* Hasil Produk */}
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Produk</h2>
+            {console.log('results', results)}
             {results.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -67,7 +65,7 @@ export default function SearchPage() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                 {results.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.productId} product={product} />
                 ))}
               </div>
             )}

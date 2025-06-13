@@ -59,7 +59,7 @@ export default function Navbar() {
               onSubmit={e => {
                 e.preventDefault();
                 if (searchQuery.trim()) {
-                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                  navigate(`/search?name=${encodeURIComponent(searchQuery)}`);
                 }
               }}
             >
@@ -82,8 +82,10 @@ export default function Navbar() {
               <button className="icon-button" onClick={() => navigate('/wishlist')}>
                 <HeartIcon className="icon" />
               </button>
-              <button className="icon-button" onClick={() => navigate('/notification')}>
-                <BellIcon className="icon" />
+              <button className="icon-button" onClick={() => navigate('/orders')}>
+                <svg className="icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zM12 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zm3.75 0a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5z" />
+                </svg>
               </button>
               <button className="icon-button" onClick={() => navigate('/cart')}>
                 <ShoppingCartIcon className="icon" />
@@ -144,29 +146,31 @@ export default function Navbar() {
             </div>
             {/* Icons */}
             <div className="mobile-icons-grid">
-              <button className="mobile-icon-button">
+              <button className="mobile-icon-button" onClick={() => {navigate('/wishlist'); setIsMenuOpen(false);}}>
                 <div className="icon-container">
                   <HeartIcon className="icon" />
                 </div>
                 <span className="icon-label">Wishlist</span>
               </button>
-              <button className="mobile-icon-button">
+              <button className="mobile-icon-button" onClick={() => {navigate('/orders'); setIsMenuOpen(false);}}>
                 <div className="icon-container">
-                  <BellIcon className="icon" />
+                  <svg className="icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zM12 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zm3.75 0a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5z" />
+                  </svg>
                 </div>
-                <span className="icon-label">Notifikasi</span>
+                <span className="icon-label">Orders</span>
               </button>
-              <button className="mobile-icon-button">
+              <button className="mobile-icon-button" onClick={() => {navigate('/cart'); setIsMenuOpen(false);}}>
                 <div className="icon-container">
                   <ShoppingCartIcon className="icon" />
                 </div>
                 <span className="icon-label">Keranjang</span>
               </button>
-              <button className="mobile-icon-button">
+              <button className="mobile-icon-button" onClick={() => {navigate('/chat'); setIsMenuOpen(false);}}>
                 <ChatBubbleLeftRightIcon className="icon" />
                 <span className="icon-label">Chat</span>
               </button>
-              <button className="mobile-icon-button">
+              <button className="mobile-icon-button" onClick={() => {navigate('/profile'); setIsMenuOpen(false);}}>
                 <UserIcon className="icon" />
                 <span className="icon-label">Akun</span>
               </button>

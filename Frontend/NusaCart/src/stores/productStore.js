@@ -1,30 +1,335 @@
 import { create } from 'zustand';
-import api from '../services/api';
+import { productAPI } from '../services/api';
 
-const useProductStore = create((set) => ({
+const useProductStore = create((set, get) => ({
+  // State
   products: [],
+  myProducts: [],
+  activeProducts: [],
+  currentProduct: null,
   loading: false,
-  error: '',
-  currentPage: 1,
-  totalPages: 1,
-  pageSize: 20,
-  totalItems: 0,
+  error: null,
+  pagination: {
+    currentPage: 0,
+    totalPages: 0,
+    totalElements: 0,
+    size: 20
+  },
+  creating: false,
+  updating: false,
+  deleting: false,
+
+  // Actions
+  setLoading: (loading) => set({ loading }),
+  setCreating: (creating) => set({ creating }),
+  setUpdating: (updating) => set({ updating }),
+  setDeleting: (deleting) => set({ deleting }),
+  setError: (error) => set({ error }),
+  clearError: () => set({ error: null }),
+
+  // Fetch all products with pagination
   fetchProducts: async (page = 0, size = 20) => {
-    set({ loading: true, error: '', currentPage: page + 1, pageSize: size });
+    // Ensure parameters are valid numbers
+    const validPage = Number.isInteger(page) ? page : 0;
+    const validSize = Number.isInteger(size) ? size : 20;
+    
+    set({ loading: true, error: null });
     try {
-      const res = await api.get(`/api/products?page=${page}&size=${size}`);
-      const data = res.data.content || res.data.products || res.data;
+      const response = await productAPI.getAll(validPage, validSize);
+      const data = response.data;
+      
       set({
-        products: Array.isArray(data) ? data : [],
-        loading: false,
-        totalPages: res.data.totalPages || 1,
-        totalItems: res.data.totalElements || (Array.isArray(data) ? data.length : 0)
+        products: data.data || data.content || [],
+        pagination: {
+          currentPage: data.currentPage || validPage,
+          totalPages: data.totalPages || 0,
+          totalElements: data.totalElements || 0,
+          size: data.size || validSize
+        },
+        loading: false
       });
-    } catch (err) {
-      set({ error: 'Gagal memuat produk. Silakan coba lagi.', loading: false });
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch products',
+        loading: false 
+      });
     }
   },
-  clearError: () => set({ error: '' })
+
+  // Fetch product by ID
+  fetchProductById: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await productAPI.getById(id);
+      set({
+        currentProduct: response.data,
+        loading: false
+      });
+      return response.data;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch product',
+        loading: false 
+      });
+      throw error;
+    }
+  },
+
+  // Fetch products by toko ID
+  fetchProductsByTokoId: async (tokoId, page = 0, size = 20) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await productAPI.getByTokoId(tokoId, page, size);
+      const data = response.data;
+      
+      set({
+        products: data.data || data.content || [],
+        pagination: {
+          currentPage: data.currentPage || page,
+          totalPages: data.totalPages || 0,
+          totalElements: data.totalElements || 0,
+          size: data.size || size
+        },
+        loading: false
+      });
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch products',
+        loading: false 
+      });
+    }
+  },
+
+  // Fetch active products
+  fetchActiveProducts: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await productAPI.getActive();
+      set({
+        activeProducts: response.data || [],
+        loading: false
+      });
+      return response.data;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch active products',
+        loading: false 
+      });
+    }
+  },
+
+  // Fetch products by seller ID
+  fetchProductsBySellerId: async (sellerId) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await productAPI.getBySellerId(sellerId);
+      set({
+        myProducts: response.data || [],
+        loading: false
+      });
+      return response.data;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch seller products',
+        loading: false 
+      });
+    }
+  },
+
+  // Create new product
+  createProduct: async (productData) => {
+    set({ creating: true, error: null });
+    try {
+      const response = await productAPI.create(productData);
+      const newProduct = response.data;
+      
+      set(state => ({
+        myProducts: [newProduct, ...state.myProducts],
+        creating: false
+      }));
+      
+      return newProduct;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to create product',
+        creating: false 
+      });
+      throw error;
+    }
+  },
+
+  // Update product with images
+  updateProduct: async (id, productData) => {
+    set({ updating: true, error: null });
+    try {
+      const response = await productAPI.update(id, productData);
+      const updatedProduct = response.data;
+      
+      set(state => ({
+        myProducts: state.myProducts.map(product => 
+          product.productId === id ? updatedProduct : product
+        ),
+        products: state.products.map(product => 
+          product.productId === id ? updatedProduct : product
+        ),
+        currentProduct: state.currentProduct?.productId === id ? updatedProduct : state.currentProduct,
+        updating: false
+      }));
+      
+      return updatedProduct;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to update product',
+        updating: false 
+      });
+      throw error;
+    }
+  },
+
+  // Update product JSON only (without images)
+  updateProductJson: async (id, productData) => {
+    set({ updating: true, error: null });
+    try {
+      const response = await productAPI.updateJson(id, productData);
+      const updatedProduct = response.data;
+      
+      set(state => ({
+        myProducts: state.myProducts.map(product => 
+          product.productId === id ? updatedProduct : product
+        ),
+        products: state.products.map(product => 
+          product.productId === id ? updatedProduct : product
+        ),
+        currentProduct: state.currentProduct?.productId === id ? updatedProduct : state.currentProduct,
+        updating: false
+      }));
+      
+      return updatedProduct;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to update product',
+        updating: false 
+      });
+      throw error;
+    }
+  },
+
+  // Delete product
+  deleteProduct: async (id) => {
+    set({ deleting: true, error: null });
+    try {
+      await productAPI.delete(id);
+      
+      set(state => ({
+        myProducts: state.myProducts.filter(product => product.productId !== id),
+        products: state.products.filter(product => product.productId !== id),
+        activeProducts: state.activeProducts.filter(product => product.productId !== id),
+        currentProduct: state.currentProduct?.productId === id ? null : state.currentProduct,
+        deleting: false
+      }));
+      
+      return true;
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to delete product',
+        deleting: false 
+      });
+      throw error;
+    }
+  },
+
+  // Search products
+  searchProducts: (query) => {
+    const { products, activeProducts } = get();
+    const searchIn = activeProducts.length > 0 ? activeProducts : products;
+    
+    if (!query.trim()) return searchIn;
+    
+    const lowercaseQuery = query.toLowerCase();
+    return searchIn.filter(product =>
+      product.productName.toLowerCase().includes(lowercaseQuery) ||
+      product.description?.toLowerCase().includes(lowercaseQuery) ||
+      product.categoryName?.toLowerCase().includes(lowercaseQuery) ||
+      product.tokoName?.toLowerCase().includes(lowercaseQuery)
+    );
+  },
+
+  // Filter products by category
+  filterByCategory: (categoryId) => {
+    const { products, activeProducts } = get();
+    const searchIn = activeProducts.length > 0 ? activeProducts : products;
+    
+    if (!categoryId) return searchIn;
+    
+    return searchIn.filter(product => product.idCategory === categoryId);
+  },
+
+  // Filter products by price range
+  filterByPriceRange: (minPrice, maxPrice) => {
+    const { products, activeProducts } = get();
+    const searchIn = activeProducts.length > 0 ? activeProducts : products;
+    
+    return searchIn.filter(product => {
+      const price = product.price;
+      return price >= minPrice && price <= maxPrice;
+    });
+  },
+
+  // Sort products
+  sortProducts: (products, sortBy = 'name', order = 'asc') => {
+    return [...products].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.productName.toLowerCase();
+          bValue = b.productName.toLowerCase();
+          break;
+        case 'price':
+          aValue = a.price;
+          bValue = b.price;
+          break;
+        case 'created':
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+        default:
+          aValue = a.productName.toLowerCase();
+          bValue = b.productName.toLowerCase();
+      }
+      
+      if (order === 'desc') {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      } else {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      }
+    });
+  },
+
+  // Set current product
+  setCurrentProduct: (product) => set({ currentProduct: product }),
+
+  // Clear current product
+  clearCurrentProduct: () => set({ currentProduct: null }),
+
+  // Reset store
+  resetStore: () => set({
+    products: [],
+    myProducts: [],
+    activeProducts: [],
+    currentProduct: null,
+    loading: false,
+    error: null,
+    pagination: {
+      currentPage: 0,
+      totalPages: 0,
+      totalElements: 0,
+      size: 20
+    },
+    creating: false,
+    updating: false,
+    deleting: false
+  })
 }));
 
 export default useProductStore; 

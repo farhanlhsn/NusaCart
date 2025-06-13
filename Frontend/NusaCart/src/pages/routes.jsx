@@ -18,6 +18,9 @@ import Privacy from "./Privacy";
 import SellerDashboard from "./SellerDashboard";
 import SearchPage from './SearchPage';
 import ProductsPage from './ProductsPage';
+import OrderHistoryPage from './OrderHistoryPage';
+import ProductDetail from '../components/ProductDetail';
+import PaymentPage from './PaymentPage';
 
 export const router = createBrowserRouter([
   {
@@ -100,6 +103,18 @@ export const router = createBrowserRouter([
       {
         path: "/products",
         element: <ProductsPage />,
+      },
+      {
+        path: "/product/:id",
+        element: <ProductDetail />,
+      },
+      {
+        path: "/orders",
+        element: <OrderHistoryPage />,
+      },
+      {
+        path: "/payment/:orderId?",
+        element: <PaymentPage />,
       },
     ],
   },

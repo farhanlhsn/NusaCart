@@ -2,3 +2,4 @@
 .vscode/
 node_modules/
 .vscode/settings.json
+backend/src/main/resources/db/migration/V2__add_general_category_to_products.sql

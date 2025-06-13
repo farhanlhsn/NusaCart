@@ -3,16 +3,22 @@ import useProductStore from "../stores/productStore";
 import ProductCard from "../components/ProductCard";
 
 export default function ProductsPage() {
-  const { products, loading, error, fetchProducts, currentPage, totalPages, pageSize, totalItems } = useProductStore();
+  const { products, loading, error, fetchProducts, pagination } = useProductStore();
+  
+  // Extract pagination data with defaults
+  const currentPage = (pagination.currentPage || 0) + 1; // Convert from 0-based to 1-based
+  const totalPages = pagination.totalPages || 0;
+  const pageSize = pagination.size || 20;
+  const totalItems = pagination.totalElements || 0;
 
   useEffect(() => {
-    fetchProducts(currentPage - 1, pageSize);
+    fetchProducts(0, pageSize); // Start with page 0 (backend uses 0-based indexing)
     // eslint-disable-next-line
-  }, [currentPage, pageSize]);
+  }, []);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
-    fetchProducts(page - 1, pageSize);
+    fetchProducts(page - 1, pageSize); // Convert from 1-based to 0-based for API
   };
 
   return (
