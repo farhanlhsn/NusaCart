@@ -125,6 +125,9 @@ export const categoryAPI = {
 // PRODUCT API ENDPOINTS
 // ========================
 export const productAPI = {
+  getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
+
   // Get all products with comprehensive filtering
   getAll: (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -268,6 +271,7 @@ export const wishlistAPI = {
   getAll: () => api.get('/api/wishlist'),
   create: (data) => api.post('/api/wishlist', data),
   getById: (id) => api.get(`/api/wishlist/${id}`),
+  getByUserId: (userId) => api.get(`/api/wishlist/user/${userId}`),
   update: (id, data) => api.put(`/api/wishlist/${id}`, data),
   delete: (id) => api.delete(`/api/wishlist/${id}`),
   addProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/add/${productId}`),

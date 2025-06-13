@@ -122,7 +122,7 @@ export default function Navbar() {
               onSubmit={e => {
                 e.preventDefault();
                 if (searchQuery.trim()) {
-                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                  navigate(`/search?name=${encodeURIComponent(searchQuery)}`);
                   setIsMenuOpen(false);
                 }
               }}

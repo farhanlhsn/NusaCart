@@ -10,15 +10,15 @@ function useQuery() {
 export default function SearchPage() {
   const query = useQuery();
   const navigate = useNavigate();
-  const q = query.get("q") || "";
+  const searchName = query.get("name") || "";
   const { results, stores, loading, error, fetchSearchResults, setDummy } = useSearchStore();
 
   useEffect(() => {
-    if (!q) {
+    if (!searchName) {
       return;
     }
-    fetchSearchResults(q);
-  }, [q, fetchSearchResults]);
+    fetchSearchResults(searchName);
+  }, [searchName, fetchSearchResults]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -27,7 +27,7 @@ export default function SearchPage() {
           <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-black p-2 rounded-full border border-gray-200 bg-white shadow-sm">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Hasil Pencarian untuk: <span className="text-indigo-600">{q}</span></h1>
+          <h1 className="text-2xl font-bold text-gray-900">Hasil Pencarian untuk: <span className="text-indigo-600">{searchName}</span></h1>
         </div>
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -74,4 +74,4 @@ export default function SearchPage() {
       </div>
     </div>
   );
-} 
+}
