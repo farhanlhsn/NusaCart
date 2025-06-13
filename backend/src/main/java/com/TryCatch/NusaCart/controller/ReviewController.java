@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -23,10 +24,10 @@ public class ReviewController {
     }
 
     // Buat review baru
-    @PostMapping
+    @PostMapping("/product/{productId}")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createReview(@RequestBody ReviewDTO dto) {
-        reviewService.createReview(dto);
+    public void createReviewByProduct(@PathVariable Integer productId, @RequestBody ReviewDTO dto) {
+        reviewService.createReviewByProduct(productId, dto);
     }
 
     // Update review berdasarkan reviewId

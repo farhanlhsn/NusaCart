@@ -17,38 +17,33 @@ public class DiscountEntity {
 
     @Id
     @Column(name = "promo_code", nullable = false, unique = true, length = 50)
-    @NotBlank(message = "Promo code must not be blank")
+    @NotBlank
     private String promoCode;
 
     @Column(length = 255)
     private String description;
 
     @Column(name = "discount_percentage", nullable = false)
-    @Min(value = 0, message = "Discount must be at least 0%")
-    @Max(value = 100, message = "Discount cannot exceed 100%")
+    @Min(value = 0)
+    @Max(value = 100)
     private double discountPercentage;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "valid_until", nullable = false)
-    @NotNull(message = "Valid until date is required")
+    @NotNull
     private Date validUntil;
 
     @Column(name = "usage_limit")
-    @Min(value = 0, message = "Usage limit cannot be negative")
+    @Min(value = 0)
     private int usageLimit;
 
-    // --- Logic Methods ---
-
-    /**
-     * Check if the promotion is still valid based on the current date and usage limit.
-     */
+    // Check if the promotion is still valid based on the current date and usage limit.
     public boolean isValid() {
-        return new Date().before(validUntil) && usageLimit > 0;
+        return usageLimit > 0 && validUntil.after(new Date());
     }
 
-    /**
-     * Update discount percentage and optionally reset usage limit and/or validity.
-     */
+
+    // Update discount percentage and optionally reset usage limit and/or validity.
     public void updateDiscount(double newPercentage, int newUsageLimit, Date newValidUntil) {
         this.discountPercentage = newPercentage;
         this.usageLimit = newUsageLimit;
