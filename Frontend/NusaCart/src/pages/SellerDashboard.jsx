@@ -92,6 +92,7 @@ const SellerDashboard = () => {
   const sidebarItems = [
     { id: 'beranda', label: 'Beranda', icon: '🏠' },
     { id: 'produk', label: 'Produk', icon: '📦', active: true },
+    { id: 'chat', label: 'Chat Pelanggan', icon: '💬', link: '/seller/chat' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'analisis', label: 'Analisis', icon: '📊' },
     { id: 'help', label: 'Help', icon: '❓' },
@@ -393,21 +394,33 @@ const SellerDashboard = () => {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveMenu(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 ${
-                  activeMenu === item.id
-                    ? 'bg-red-50 text-red-600 border-red-600 shadow scale-105'
-                    : 'text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105'
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-                {item.id !== 'produk' && item.id !== 'beranda' && (
+              item.link ? (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.link)}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
                   <ChevronRight className="w-4 h-4 ml-auto" />
-                )}
-              </button>
+                </button>
+              ) : (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveMenu(item.id)}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 ${
+                    activeMenu === item.id
+                      ? 'bg-red-50 text-red-600 border-red-600 shadow scale-105'
+                      : 'text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105'
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                  {item.id !== 'produk' && item.id !== 'beranda' && (
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              )
             ))}
           </nav>
           {/* User Profile at Bottom */}
@@ -601,14 +614,23 @@ const SellerDashboard = () => {
                 </div>
               </div>
             </div>
-            {/* Floating Add Product Button */}
-            <button
-              onClick={handleAddProduct}
-              className="fixed bottom-8 right-8 z-30 bg-red-600 hover:bg-black text-white rounded-full shadow-lg p-5 flex items-center gap-2 text-lg font-bold transition-all duration-200 shadow-red-300 hover:scale-110"
-            >
-              <Plus className="w-6 h-6" />
-              <span className="hidden md:inline">Tambah Produk</span>
-            </button>
+            {/* Floating Action Buttons */}
+            <div className="fixed bottom-8 right-8 z-30 flex flex-col gap-4">
+              <button
+                onClick={() => navigate('/seller/chat')}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-4 flex items-center gap-2 text-sm font-bold transition-all duration-200 shadow-blue-300 hover:scale-110"
+              >
+                <span className="text-lg">💬</span>
+                <span className="hidden md:inline">Chat</span>
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="bg-red-600 hover:bg-black text-white rounded-full shadow-lg p-5 flex items-center gap-2 text-lg font-bold transition-all duration-200 shadow-red-300 hover:scale-110"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="hidden md:inline">Tambah Produk</span>
+              </button>
+            </div>
           </section>
         </main>
       </div>

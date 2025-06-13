@@ -89,6 +89,7 @@ export const authAPI = {
 // USER API ENDPOINTS
 // ========================
 export const userAPI = {
+  getById: (userId) => api.get(`/api/auth/users/${userId}`),
   getProfile: () => api.get('/api/user/profile'),
   updateProfile: (data) => api.put('/api/user/update_profile', data),
 };
@@ -329,6 +330,23 @@ export const imageAPI = {
   upload: (formData) => api.post('/api/images/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+};
+
+// ========================
+// CHAT API ENDPOINTS (Using real backend endpoints)
+// ========================
+export const chatAPI = {
+  // Send a message (real backend endpoint)
+  sendMessage: (data) => api.post('/api/chat/send', data),
+  
+  // Get chat history between users (real backend endpoint) 
+  getChatHistory: (receiverId) => api.get(`/api/chat/history?receiverId=${receiverId}`),
+  
+  // Report chat (real backend endpoint)
+  reportChat: (data) => api.post('/api/chat/report', data),
+  
+  // Get store info for chat
+  getStoreInfo: (storeId) => api.get(`/api/toko/${storeId}`),
 };
 
 export default api;

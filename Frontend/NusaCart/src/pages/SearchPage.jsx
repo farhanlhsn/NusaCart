@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import ChatButton from "../components/ChatButton";
 import useSearchStore from "../stores/searchStore";
 
 function useQuery() {
@@ -48,7 +49,16 @@ export default function SearchPage() {
                   {stores.map(store => (
                     <div key={store.id} className="bg-white rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition-all">
                       <img src={store.image} alt={store.name} className="w-16 h-16 rounded-full object-cover mb-2" />
-                      <div className="font-bold text-gray-800 text-center">{store.name}</div>
+                      <div className="font-bold text-gray-800 text-center mb-3">{store.name}</div>
+                      <ChatButton
+                        storeId={store.id}
+                        storeName={store.name}
+                        variant="secondary"
+                        size="small"
+                        className="w-full"
+                      >
+                        Chat
+                      </ChatButton>
                     </div>
                   ))}
                 </div>
