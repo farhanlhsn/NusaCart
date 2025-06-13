@@ -3,6 +3,8 @@ package com.TryCatch.NusaCart.controller;
 import com.TryCatch.NusaCart.dto.ReviewDTO;
 import com.TryCatch.NusaCart.service.ReviewService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,13 +24,15 @@ public class ReviewController {
 
     // Buat review baru
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public void createReview(@RequestBody ReviewDTO dto) {
         reviewService.createReview(dto);
     }
 
     // Update review berdasarkan reviewId
     @PutMapping("/{reviewId}")
-    public void updateReview(@PathVariable String reviewId, @RequestBody ReviewDTO dto) {
+    @ResponseStatus(HttpStatus.OK)
+    public void updateReview(@PathVariable Integer reviewId, @RequestBody ReviewDTO dto) {
         reviewService.updateReview(reviewId, dto);
     }
 }
