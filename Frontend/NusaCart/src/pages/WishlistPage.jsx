@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, Eye, Trash2, Filter, Grid3X3, List, Star, Search, ChevronDown, Share2, Check, X, ChevronsUpDown } from "lucide-react";
 import useWishlistStore from "../stores/wishlistStore";
+import useCartStore from "../stores/cartStore";
 
 export default function WishlistPage() {
     const navigate = useNavigate();
@@ -26,6 +27,8 @@ export default function WishlistPage() {
         setNotification,
         clearNotification
     } = useWishlistStore();
+    
+    const { addProductToCart } = useCartStore();
 
     const categories = ['all', 'Gaming', 'Electronics', 'Furniture', 'Real Estate'];
     const sortOptions = [
@@ -90,8 +93,15 @@ export default function WishlistPage() {
         setSelectedItems([]);
     };
 
-    const handleAddToCart = (item) => {
-        showNotification(`${item.name} ditambahkan ke keranjang`);
+    const handleAddToCart = async (item) => {
+        try {
+            // Assume item has a productId property, or use id if it's the product ID
+            const productId = item.productId || item.id;
+            await addProductToCart(productId, 1);
+            showNotification(`${item.name} ditambahkan ke keranjang`);
+        } catch (error) {
+            showNotification(`Gagal menambahkan ${item.name} ke keranjang`, 'error');
+        }
     };
 
     const handleRemoveItem = (itemId) => {
@@ -99,13 +109,23 @@ export default function WishlistPage() {
         showNotification(`${item.name} dihapus dari wishlist`);
     };
 
-    const handleAddAllToCart = () => {
+    const handleAddAllToCart = async () => {
         const inStockItems = filteredAndSortedItems.filter(item => item.inStock);
         if (inStockItems.length === 0) {
             showNotification('Tidak ada item yang tersedia untuk ditambahkan ke keranjang', 'error');
             return;
         }
-        showNotification(`${inStockItems.length} item ditambahkan ke keranjang`);
+        
+        try {
+            // Add all items to cart
+            for (const item of inStockItems) {
+                const productId = item.productId || item.id;
+                await addProductToCart(productId, 1);
+            }
+            showNotification(`${inStockItems.length} item ditambahkan ke keranjang`);
+        } catch (error) {
+            showNotification('Gagal menambahkan beberapa item ke keranjang', 'error');
+        }
     };
 
     const formatPrice = (price) => {
