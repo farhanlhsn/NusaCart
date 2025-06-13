@@ -36,7 +36,6 @@ public class ReviewService {
         ProductEntity product = productRepository.findById(dto.getProductId()).orElseThrow();
 
         ReviewEntity review = ReviewEntity.builder()
-                .reviewId(dto.getReviewId())
                 .user(user)
                 .product(product)
                 .rating(dto.getRating())
@@ -47,7 +46,7 @@ public class ReviewService {
         reviewRepository.save(review);
     }
 
-    public void updateReview(String reviewId, ReviewDTO dto) {
+    public void updateReview(Integer reviewId, ReviewDTO dto) {
         ReviewEntity review = reviewRepository.findByReviewId(reviewId).orElseThrow();
         review.editReview(dto.getComment(), dto.getRating());
         reviewRepository.save(review);
