@@ -118,6 +118,7 @@ export const categoryAPI = {
 // ========================
 export const productAPI = {
   getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
   getById: (id) => api.get(`/api/products/${id}`),
   getByTokoId: (tokoId, page = 0, size = 10) => api.get(`/api/products/toko/${tokoId}?page=${page}&size=${size}`),
   getActive: () => api.get('/api/products/active'),

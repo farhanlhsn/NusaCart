@@ -56,6 +56,49 @@ const useProductStore = create((set, get) => ({
     }
   },
 
+  // Fetch products with filters
+  fetchProductsWithFilters: async (page = 0, size = 20, filters = {}) => {
+    const validPage = Number.isInteger(page) ? page : 0;
+    const validSize = Number.isInteger(size) ? size : 20;
+    
+    set({ loading: true, error: null });
+    try {
+      const params = new URLSearchParams({
+        page: validPage,
+        size: validSize,
+        ...(filters.categoryId && { categoryId: filters.categoryId }),
+        ...(filters.tokoId && { tokoId: filters.tokoId }),
+        ...(filters.minPrice && { minPrice: filters.minPrice }),
+        ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
+        ...(filters.minStock && { minStock: filters.minStock }),
+        ...(filters.productName && { productName: filters.productName }),
+        ...(filters.generalCategory && { generalCategory: filters.generalCategory }),
+        ...(filters.sortBy && { sortBy: filters.sortBy }),
+        ...(filters.sortDirection && { sortDirection: filters.sortDirection }),
+        ...(filters.activeOnly !== undefined && { activeOnly: filters.activeOnly })
+      });
+      
+      const response = await productAPI.getAllWithFilters(params.toString());
+      const data = response.data;
+      
+      set({
+        products: data.data || data.content || [],
+        pagination: {
+          currentPage: data.currentPage || validPage,
+          totalPages: data.totalPages || 0,
+          totalElements: data.totalElements || 0,
+          size: data.size || validSize
+        },
+        loading: false
+      });
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || 'Failed to fetch products with filters',
+        loading: false 
+      });
+    }
+  },
+
   // Fetch product by ID
   fetchProductById: async (id) => {
     set({ loading: true, error: null });
@@ -332,4 +375,4 @@ const useProductStore = create((set, get) => ({
   })
 }));
 
-export default useProductStore; 
+export default useProductStore;
