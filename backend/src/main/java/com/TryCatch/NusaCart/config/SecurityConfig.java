@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories/toko/{idToko}").permitAll() // Public endpoint for viewing categories of a specific store
                 .requestMatchers("/api/categories/search").permitAll() // Public endpoint for searching categories
                 .requestMatchers("/api/categories/my-categories").hasRole("SELLER") // Endpoint for seller to view their categories
+                .requestMatchers("/api/payment-methods/**").permitAll() // Public endpoint for viewing payment methods
+                .requestMatchers("/api/payments/**").hasAnyRole("USER", "SELLER") // Payment management endpoints
                 .requestMatchers("/api/seller/register").hasRole("USER")
                 .requestMatchers("/api/toko/my-stores").hasRole("SELLER") // For seller to manage their own stores
                 .requestMatchers("/api/toko").hasRole("SELLER") // POST to create a store

@@ -100,16 +100,29 @@ public class CategoryController {
     // Search categories by name
     @GetMapping("/search")
     public ResponseEntity<List<CategoryDTO>> searchCategories(
-            @RequestParam String name,
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) Integer toko) {
         log.info("GET request to search categories with name: {}", name);
         
         List<CategoryDTO> categories;
-        if (toko != null) {
-            log.info("Searching in specific toko with ID: {}", toko);
-            categories = categoryService.searchCategoriesByNameAndTokoId(name, toko);
+        
+        // If no name parameter provided, return all categories
+        if (name == null || name.trim().isEmpty()) {
+            if (toko != null) {
+                log.info("Fetching all categories for toko with ID: {}", toko);
+                categories = categoryService.getCategoriesByTokoId(toko);
+            } else {
+                log.info("Fetching all categories");
+                categories = categoryService.getAllCategories();
+            }
         } else {
-            categories = categoryService.searchCategoriesByName(name);
+            // Search by name
+            if (toko != null) {
+                log.info("Searching in specific toko with ID: {}", toko);
+                categories = categoryService.searchCategoriesByNameAndTokoId(name, toko);
+            } else {
+                categories = categoryService.searchCategoriesByName(name);
+            }
         }
         
         return ResponseEntity.ok(categories);
@@ -151,12 +164,12 @@ public class CategoryController {
     
     // Update a category
     @PutMapping("/{idCategory}")
-    public ResponseEntity<CategoryDTO> updateCategory(
+    public ResponseEntity<Map<String, Object>> updateCategory(
             @PathVariable Integer idCategory,
             @Valid @RequestBody CategoryUpdateDTO categoryUpdateDTO) {
         log.info("PUT request to update category with ID: {}", idCategory);
-        CategoryDTO updatedCategory = categoryService.updateCategory(idCategory, categoryUpdateDTO);
-        return ResponseEntity.ok(updatedCategory);
+        Map<String, Object> response = categoryService.updateCategory(idCategory, categoryUpdateDTO);
+        return ResponseEntity.ok(response);
     }
     
     // Delete a category
