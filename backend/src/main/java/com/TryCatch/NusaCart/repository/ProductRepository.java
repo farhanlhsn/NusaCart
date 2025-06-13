@@ -55,6 +55,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
            "(:maxPrice IS NULL OR p.price <= :maxPrice) AND " +
            "(:minStock IS NULL OR p.stock >= :minStock) AND " +
            "(:productName IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :productName, '%'))) AND " +
+           "(:generalCategory IS NULL OR p.generalCategory = :generalCategory) AND " +
            "(:activeOnly IS NULL OR :activeOnly = false OR p.isActive = true)")
     Page<ProductEntity> findProductsWithFilters(
             @Param("categoryId") Integer categoryId,
@@ -63,6 +64,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
             @Param("maxPrice") Double maxPrice,
             @Param("minStock") Integer minStock,
             @Param("productName") String productName,
+            @Param("generalCategory") GeneralCategory generalCategory,
             @Param("activeOnly") Boolean activeOnly,
             Pageable pageable);
     
@@ -74,6 +76,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
            "(:maxPrice IS NULL OR p.price <= :maxPrice) AND " +
            "(:minStock IS NULL OR p.stock >= :minStock) AND " +
            "(:productName IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :productName, '%'))) AND " +
+           "(:generalCategory IS NULL OR p.generalCategory = :generalCategory) AND " +
            "(:activeOnly IS NULL OR :activeOnly = false OR p.isActive = true)")
     Long countProductsWithFilters(
             @Param("categoryId") Integer categoryId,
@@ -82,6 +85,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
             @Param("maxPrice") Double maxPrice,
             @Param("minStock") Integer minStock,
             @Param("productName") String productName,
+            @Param("generalCategory") GeneralCategory generalCategory,
             @Param("activeOnly") Boolean activeOnly);
     
     // Alternative method without pagination for simple filtering
@@ -92,6 +96,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
            "(:maxPrice IS NULL OR p.price <= :maxPrice) AND " +
            "(:minStock IS NULL OR p.stock >= :minStock) AND " +
            "(:productName IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :productName, '%'))) AND " +
+           "(:generalCategory IS NULL OR p.generalCategory = :generalCategory) AND " +
            "(:activeOnly IS NULL OR :activeOnly = false OR p.isActive = true) " +
            "ORDER BY p.createdAt DESC")
     List<ProductEntity> findProductsWithFiltersNoPage(
@@ -101,6 +106,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
             @Param("maxPrice") Double maxPrice,
             @Param("minStock") Integer minStock,
             @Param("productName") String productName,
+            @Param("generalCategory") GeneralCategory generalCategory,
             @Param("activeOnly") Boolean activeOnly);
     
     // Method for getting products with custom sorting
@@ -111,6 +117,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
            "(:maxPrice IS NULL OR p.price <= :maxPrice) AND " +
            "(:minStock IS NULL OR p.stock >= :minStock) AND " +
            "(:productName IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :productName, '%'))) AND " +
+           "(:generalCategory IS NULL OR p.generalCategory = :generalCategory) AND " +
            "(:activeOnly IS NULL OR :activeOnly = false OR p.isActive = true)")
     Page<ProductEntity> findProductsWithFiltersAndSort(
             @Param("categoryId") Integer categoryId,
@@ -119,6 +126,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Integer>
             @Param("maxPrice") Double maxPrice,
             @Param("minStock") Integer minStock,
             @Param("productName") String productName,
+            @Param("generalCategory") GeneralCategory generalCategory,
             @Param("activeOnly") Boolean activeOnly,
             Pageable pageable);
 }

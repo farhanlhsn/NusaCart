@@ -58,12 +58,13 @@ public class ProductController {
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) Integer minStock,
             @RequestParam(required = false) String productName,
+            @RequestParam(required = false) GeneralCategory generalCategory,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection,
             @RequestParam(defaultValue = "true") Boolean activeOnly) {
         
-        log.info("GET request to fetch products with pagination and filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
-                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
+        log.info("GET request to fetch products with pagination and filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, generalCategory: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
+                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
         
         // Validate pagination parameters
         if (page < 0) {
@@ -97,7 +98,7 @@ public class ProductController {
         }
         
         Map<String, Object> response = productService.getPaginatedProductsWithFilters(
-            page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
+            page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
         return ResponseEntity.ok(response);
     }
     
