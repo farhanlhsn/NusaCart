@@ -23,20 +23,13 @@ public class WishlistController {
     }
 
     @PostMapping
-    public ResponseEntity<WishlistDTO> createWishlist(@RequestBody WishlistDTO dto) {
-        return ResponseEntity.ok(wishlistService.createWishlist(dto));
+    public ResponseEntity<WishlistDTO> createWishlist() {
+        return ResponseEntity.ok(wishlistService.createWishlist());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<WishlistResponseDTO> getWishlistById(@PathVariable UserEntity id) {
-        return ResponseEntity.ok(wishlistService.getOrCreateWishlistByUserId(id));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<WishlistDTO> updateWishlist(
-            @PathVariable Integer id,
-            @RequestBody WishlistDTO dto) {
-        return ResponseEntity.ok(wishlistService.updateWishlist(id, dto));
+    public ResponseEntity<WishlistResponseDTO> getWishlistById(@PathVariable Integer id) {
+        return ResponseEntity.ok(wishlistService.getWishlistByUserId(id));
     }
 
     @DeleteMapping("/{id}")
