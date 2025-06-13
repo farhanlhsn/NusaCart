@@ -6,6 +6,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +20,7 @@ import com.TryCatch.NusaCart.entity.CategoryEntity;
 import com.TryCatch.NusaCart.entity.ProductEntity;
 import com.TryCatch.NusaCart.entity.TokoEntity;
 import com.TryCatch.NusaCart.entity.UserEntity;
+import com.TryCatch.NusaCart.enums.GeneralCategory;
 import com.TryCatch.NusaCart.repository.CategoryRepository;
 import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.TokoRepository;
@@ -89,6 +94,83 @@ public class ProductService {
         response.put("size", size);
         
         return response;
+    }
+    
+    // Get paginated products with filters using database-level filtering
+    public Map<String, Object> getPaginatedProductsWithFilters(int page, int size, Integer categoryId, Integer tokoId, 
+            Double minPrice, Double maxPrice, Integer minStock, String productName, GeneralCategory generalCategory, String sortBy, String sortDirection, Boolean activeOnly) {
+        
+        log.info("Getting paginated products with filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, generalCategory: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
+                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
+        
+        // Create Pageable with sorting
+        Pageable pageable = createPageableWithSort(page, size, sortBy, sortDirection);
+        
+        // Get filtered products from database
+        Page<ProductEntity> productPage = productRepository.findProductsWithFilters(
+                categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, activeOnly, pageable);
+        
+        // Convert to DTOs
+        List<ProductDTO> productDTOs = productPage.getContent().stream()
+                .map(ProductDTO::new)
+                .collect(Collectors.toList());
+        
+        // Create response
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", productDTOs);
+        response.put("currentPage", page);
+        response.put("totalItems", productPage.getTotalElements());
+        response.put("totalPages", productPage.getTotalPages());
+        response.put("size", size);
+        // Create filters map that can handle null values
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("categoryId", categoryId);
+        filters.put("tokoId", tokoId);
+        filters.put("minPrice", minPrice);
+        filters.put("maxPrice", maxPrice);
+        filters.put("minStock", minStock);
+        filters.put("productName", productName);
+        filters.put("sortBy", sortBy);
+        filters.put("sortDirection", sortDirection);
+        filters.put("activeOnly", activeOnly);
+        response.put("filters", filters);
+        
+        return response;
+    }
+    
+    // Helper method to create Pageable with sorting
+    private Pageable createPageableWithSort(int page, int size, String sortBy, String sortDirection) {
+        Sort sort;
+        
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            Sort.Direction direction = (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) 
+                    ? Sort.Direction.DESC : Sort.Direction.ASC;
+            
+            switch (sortBy.toLowerCase()) {
+                case "price":
+                    sort = Sort.by(direction, "price");
+                    break;
+                case "name":
+                    sort = Sort.by(direction, "productName");
+                    break;
+                case "stock":
+                    sort = Sort.by(direction, "stock");
+                    break;
+                case "created":
+                case "createdat":
+                    sort = Sort.by(direction, "createdAt");
+                    break;
+                default:
+                    // Default sort by creation date (newest first)
+                    sort = Sort.by(Sort.Direction.DESC, "createdAt");
+                    break;
+            }
+        } else {
+            // Default sort by creation date (newest first)
+            sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+        
+        return PageRequest.of(page, size, sort);
     }
     
     // Get product by ID
@@ -225,9 +307,9 @@ public class ProductService {
                 .price(productCreateDTO.getPrice())
                 .stock(productCreateDTO.getStock())
                 .toko(toko)
-
                 .imageUrls(productCreateDTO.getImageUrls())
                 .category(category)
+                .generalCategory(productCreateDTO.getGeneralCategory())
                 .isActive(productCreateDTO.getIsActive())
                 .build();
         
@@ -286,6 +368,10 @@ public class ProductService {
             CategoryEntity category = categoryRepository.findByIdCategory(productUpdateDTO.getIdCategory())
                     .orElseThrow(() -> new EntityNotFoundException("Kategori tidak ditemukan dengan ID: " + productUpdateDTO.getIdCategory()));
             existingProduct.setCategory(category);
+        }
+        
+        if (productUpdateDTO.getGeneralCategory() != null) {
+            existingProduct.setGeneralCategory(productUpdateDTO.getGeneralCategory());
         }
         
         if (productUpdateDTO.getIsActive() != null) {

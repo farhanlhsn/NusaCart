@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.TryCatch.NusaCart.entity.ProductEntity;
+import com.TryCatch.NusaCart.enums.GeneralCategory;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,6 +26,7 @@ public class ProductResponseDTO {
     private List<String> imageUrls;
     private Integer idCategory;
     private String categoryName;
+    private GeneralCategory generalCategory;
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -45,6 +47,7 @@ public class ProductResponseDTO {
             this.categoryName = product.getCategory().getNamaCategory();
         }
         
+        this.generalCategory = product.getGeneralCategory();
         this.isActive = product.getIsActive();
         this.createdAt = product.getCreatedAt();
         this.updatedAt = product.getUpdatedAt();

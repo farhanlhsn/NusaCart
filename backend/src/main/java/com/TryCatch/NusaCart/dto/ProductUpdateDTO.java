@@ -2,6 +2,8 @@ package com.TryCatch.NusaCart.dto;
 
 import java.util.List;
 
+import com.TryCatch.NusaCart.enums.GeneralCategory;
+
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +29,8 @@ public class ProductUpdateDTO {
     private List<String> imageUrls;
     
     private Integer idCategory;
+    
+    private GeneralCategory generalCategory;
     
     private Boolean isActive;
 }
