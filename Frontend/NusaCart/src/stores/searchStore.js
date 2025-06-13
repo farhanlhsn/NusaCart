@@ -6,10 +6,10 @@ const useSearchStore = create((set) => ({
   stores: [],
   loading: false,
   error: '',
-  fetchSearchResults: async (q) => {
+  fetchSearchResults: async (searchName) => {
     set({ loading: true, error: '' });
     try {
-      const res = await api.get(`/api/products/search?name=${encodeURIComponent(q)}`);
+      const res = await api.get(`/api/products/search?name=${encodeURIComponent(searchName)}`);
       set({
         results: Array.isArray(res.data) ? res.data : (res.data.content || res.data.products || res.data || []),
         stores: [],
@@ -19,9 +19,9 @@ const useSearchStore = create((set) => ({
       set({ error: 'Gagal mencari produk. Silakan coba lagi.', loading: false });
     }
   },
-  setDummy: (q) => {
+  setDummy: (searchName) => {
     // Dummy data untuk development
-    if (q.toLowerCase() === 'baju') {
+    if (searchName.toLowerCase() === 'baju') {
       set({
         results: [
           { id: 1, name: 'Baju Batik Pria', price: 120000, image: 'https://images.unsplash.com/photo-1513708927688-890a1c7b6b5a?auto=format&fit=crop&w=400&q=80' },
@@ -40,4 +40,4 @@ const useSearchStore = create((set) => ({
   clearError: () => set({ error: '' })
 }));
 
-export default useSearchStore; 
+export default useSearchStore;

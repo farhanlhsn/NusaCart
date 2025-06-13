@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useProductStore from '../stores/productStore';
 import useCartStore from '../stores/cartStore';
-import useWishlistStore from '../stores/wishlistStore';
-import useReviewStore from '../stores/reviewStore';
 import useAuthStore from '../stores/authStore';
+import useWishlistStore from '../stores/wishlistStore';
 import ProductReviews from './ProductReviews';
 
 const ProductDetail = () => {
@@ -13,37 +12,40 @@ const ProductDetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [showReviews, setShowReviews] = useState(false);
-
+  
   const { 
     currentProduct, 
     loading, 
     error, 
-    fetchProductById,
-    clearCurrentProduct 
+    fetchProductById
   } = useProductStore();
 
-  const { addToCart, loading: cartLoading } = useCartStore();
-  const { addToWishlist, loading: wishlistLoading } = useWishlistStore();
-  const { 
-    fetchReviewsByProduct, 
-    getReviewsByProduct, 
-    getAverageRating 
-  } = useReviewStore();
+  const { addProductToCart, loading: cartLoading } = useCartStore();
   const { user } = useAuthStore();
+  const { 
+    addToWishlist, 
+    removeFromWishlist, 
+    isInWishlist, 
+    fetchWishlist,
+    loading: wishlistLoading 
+  } = useWishlistStore();
+  
+  // Mock data for reviews
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
     if (id) {
       fetchProductById(parseInt(id));
-      fetchReviewsByProduct(parseInt(id));
     }
+  }, [id, fetchProductById]);
 
-    return () => {
-      clearCurrentProduct();
-    };
-  }, [id, fetchProductById, fetchReviewsByProduct, clearCurrentProduct]);
-
-  const reviews = getReviewsByProduct(parseInt(id));
-  const averageRating = getAverageRating(parseInt(id));
+  // Load user's wishlist when component mounts
+  useEffect(() => {
+    if (user?.userId) {
+      fetchWishlist(user.userId);
+    }
+  }, [user?.userId, fetchWishlist]);
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -52,10 +54,7 @@ const ProductDetail = () => {
     }
 
     try {
-      await addToCart({
-        productId: currentProduct.productId,
-        quantity: quantity
-      });
+      await addProductToCart(currentProduct.productId, quantity);
       alert('Product added to cart successfully!');
     } catch (error) {
       alert(error.message || 'Failed to add to cart');
@@ -69,10 +68,13 @@ const ProductDetail = () => {
     }
 
     try {
-      await addToWishlist(currentProduct.productId);
-      alert('Product added to wishlist successfully!');
+      if (isInWishlist(currentProduct.productId)) {
+        await removeFromWishlist(currentProduct.productId);
+      } else {
+        await addToWishlist(currentProduct.productId);
+      }
     } catch (error) {
-      alert(error.message || 'Failed to add to wishlist');
+      alert(error.message || 'Failed to update wishlist');
     }
   };
 
@@ -143,7 +145,11 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
             <img
-              src={currentProduct.imageUrls?.[selectedImageIndex] || '/placeholder-image.png'}
+              src={currentProduct.imageUrls?.[selectedImageIndex] 
+                ? (currentProduct.imageUrls[selectedImageIndex].startsWith('http') 
+                   ? currentProduct.imageUrls[selectedImageIndex] 
+                   : `http://localhost:6060${currentProduct.imageUrls[selectedImageIndex]}`)
+                : '/placeholder-image.png'}
               alt={currentProduct.productName}
               className="w-full h-full object-cover"
             />
@@ -160,7 +166,7 @@ const ProductDetail = () => {
                   }`}
                 >
                   <img
-                    src={url}
+                    src={url.startsWith('http') ? url : `http://localhost:6060${url}`}
                     alt={`${currentProduct.productName} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -261,9 +267,18 @@ const ProductDetail = () => {
               <button
                 onClick={handleAddToWishlist}
                 disabled={wishlistLoading}
-                className="px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-6 py-3 border-2 rounded-lg font-medium transition-all duration-200 ${
+                  isInWishlist(currentProduct.productId)
+                    ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
+                    : 'border-red-500 text-red-500 hover:bg-red-50'
+                }`}
               >
-                {wishlistLoading ? '♡' : '♡ Wishlist'}
+                {wishlistLoading 
+                  ? '...' 
+                  : isInWishlist(currentProduct.productId) 
+                    ? '❤️ In Wishlist' 
+                    : '♡ Add to Wishlist'
+                }
               </button>
             </div>
           </div>

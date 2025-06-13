@@ -15,15 +15,16 @@ const useAuthStore = create(
         set({ loading: true, error: null });
         try {
           const response = await authAPI.login(credentials);
-          const { token, user } = response.data;
+          console.log('AuthStore received response:', response.data);
           
-          // Store token in localStorage
-          localStorage.setItem('token', token);
+          // Backend uses cookie-based auth, no token in response body
+          // Response format: {status: 'success', message: '...', tokenType: 'Cookie', expires_in: '...', user: {...}}
+          const { user } = response.data;
           
           set({
             isLoggedIn: true,
             user: user,
-            token: token,
+            token: 'cookie-based', // Indicate cookie-based auth
             loading: false,
             error: null
           });
@@ -57,14 +58,14 @@ const useAuthStore = create(
 
       logout: async () => {
         try {
-          // Call backend logout if needed
+          // Call backend logout to clear cookies
           await authAPI.logout();
         } catch (error) {
           console.error('Logout error:', error);
         }
         
-        // Clear local storage
-        localStorage.removeItem('token');
+        // No need to clear localStorage token since we use cookies
+        // Cookies are cleared by backend logout endpoint
         
         set({
           isLoggedIn: false,
@@ -119,7 +120,7 @@ const useAuthStore = create(
       },
 
       refreshUser: async () => {
-        if (!get().token) return;
+        if (!get().isLoggedIn) return;
         
         set({ loading: true });
         try {
@@ -131,7 +132,7 @@ const useAuthStore = create(
           });
         } catch (error) {
           console.error('Failed to refresh user:', error);
-          // If token is invalid, logout
+          // If cookies are invalid, logout
           get().logout();
         }
       },
@@ -143,7 +144,7 @@ const useAuthStore = create(
       partialize: (state) => ({
         isLoggedIn: state.isLoggedIn,
         user: state.user,
-        token: state.token,
+        // Don't persist token since we use cookie-based auth
       }),
     }
   )

@@ -1,6 +1,7 @@
 package com.TryCatch.NusaCart.controller;
 
 import com.TryCatch.NusaCart.dto.WishlistDTO;
+import com.TryCatch.NusaCart.dto.WishlistResponseDTO;
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.service.WishlistService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,7 @@ public class WishlistController {
     private WishlistService wishlistService;
 
     @GetMapping
-    public ResponseEntity<List<WishlistDTO>> getAllWishlists() {
+    public ResponseEntity<List<WishlistResponseDTO>> getAllWishlists() {
         return ResponseEntity.ok(wishlistService.getAllWishlists());
     }
 
@@ -27,7 +28,7 @@ public class WishlistController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<WishlistDTO> getWishlistById(@PathVariable UserEntity id) {
+    public ResponseEntity<WishlistResponseDTO> getWishlistById(@PathVariable UserEntity id) {
         return ResponseEntity.ok(wishlistService.getOrCreateWishlistByUserId(id));
     }
 
@@ -45,14 +46,14 @@ public class WishlistController {
     }
 
     @PostMapping("/{wishlistId}/add/{productId}")
-    public ResponseEntity<WishlistDTO> addProduct(
+    public ResponseEntity<WishlistResponseDTO> addProduct(
             @PathVariable Integer wishlistId,
             @PathVariable Integer productId) {
         return ResponseEntity.ok(wishlistService.addProductToWishlist(wishlistId, productId));
     }
 
     @PostMapping("/{wishlistId}/remove/{productId}")
-    public ResponseEntity<WishlistDTO> removeProduct(
+    public ResponseEntity<WishlistResponseDTO> removeProduct(
             @PathVariable Integer wishlistId,
             @PathVariable Integer productId) {
         return ResponseEntity.ok(wishlistService.removeProductFromWishlist(wishlistId, productId));
