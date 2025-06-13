@@ -183,18 +183,19 @@ const useProductStore = create((set, get) => ({
   createProduct: async (productData) => {
     set({ creating: true, error: null });
     try {
+      if (!(productData instanceof FormData)) {
+        throw new Error('Pembuatan produk hanya bisa dengan FormData (dengan gambar).');
+      }
       const response = await productAPI.create(productData);
       const newProduct = response.data;
-      
       set(state => ({
         myProducts: [newProduct, ...state.myProducts],
         creating: false
       }));
-      
       return newProduct;
     } catch (error) {
       set({ 
-        error: error.response?.data?.message || 'Failed to create product',
+        error: error.response?.data?.message || error.message || 'Failed to create product',
         creating: false 
       });
       throw error;
@@ -207,7 +208,6 @@ const useProductStore = create((set, get) => ({
     try {
       const response = await productAPI.update(id, productData);
       const updatedProduct = response.data;
-      
       set(state => ({
         myProducts: state.myProducts.map(product => 
           product.productId === id ? updatedProduct : product
@@ -218,11 +218,10 @@ const useProductStore = create((set, get) => ({
         currentProduct: state.currentProduct?.productId === id ? updatedProduct : state.currentProduct,
         updating: false
       }));
-      
       return updatedProduct;
     } catch (error) {
       set({ 
-        error: error.response?.data?.message || 'Failed to update product',
+        error: error.response?.data?.message || error.message || 'Failed to update product',
         updating: false 
       });
       throw error;

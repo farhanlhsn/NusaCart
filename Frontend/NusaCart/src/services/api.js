@@ -81,8 +81,8 @@ export const authAPI = {
   register: (data) => api.post('/api/auth/register', data),
   logout: () => api.post('/api/auth/logout'),
   refresh: () => api.post('/api/auth/refresh'),
-  forgotPassword: (data) => api.post('/api/auth/forgot-password', data),
-  resetPassword: (data) => api.post('/api/auth/reset-password', data),
+  forgotPassword: (data) => api.post('/api/auth/forget_password', data),
+  confirmForgotPassword: (data) => api.post('/api/auth/confirm_forget_password', data),
 };
 
 // ========================
@@ -101,6 +101,13 @@ export const sellerAPI = {
 };
 
 // ========================
+// GENERAL CATEGORY API ENDPOINTS
+// ========================
+export const generalCategoryAPI = {
+  getAll: () => api.get('/api/general-categories'),
+};
+
+// ========================
 // CATEGORY API ENDPOINTS
 // ========================
 export const categoryAPI = {
@@ -108,6 +115,7 @@ export const categoryAPI = {
   getById: (id) => api.get(`/api/categories/${id}`),
   getByTokoId: (tokoId, page = 0, size = 10) => api.get(`/api/categories/toko/${tokoId}?page=${page}&size=${size}`),
   getMyCategories: (page = 0, size = 10) => api.get(`/api/categories/my-categories?page=${page}&size=${size}`),
+  search: (name, page = 0, size = 10) => api.get(`/api/categories/search?name=${encodeURIComponent(name)}&page=${page}&size=${size}`),
   create: (data) => api.post('/api/categories', data),
   update: (id, data) => api.put(`/api/categories/${id}`, data),
   delete: (id) => api.delete(`/api/categories/${id}`),
@@ -121,14 +129,48 @@ export const productAPI = {
   getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
   getById: (id) => api.get(`/api/products/${id}`),
   getByTokoId: (tokoId, page = 0, size = 10) => api.get(`/api/products/toko/${tokoId}?page=${page}&size=${size}`),
+  getByCategoryId: (categoryId) => api.get(`/api/products/category/${categoryId}`),
+  search: (name) => api.get(`/api/products/search?name=${encodeURIComponent(name)}`),
   getActive: () => api.get('/api/products/active'),
   getBySellerId: (sellerId) => api.get(`/api/products/seller/${sellerId}`),
-  create: (formData) => api.post('/api/products', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  update: (id, formData) => api.put(`/api/products/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  
+  // Create with JSON (for SellerDashboard) or multipart form data (for ProductCreator)
+  create: (data) => {
+    const formData = new FormData();
+    formData.append('productData', JSON.stringify({
+      productName: data.productName,
+      description: data.description,
+      price: Number(data.price),
+      stock: Number(data.stock),
+      idCategory: data.idCategory ? Number(data.idCategory) : undefined,
+      isActive: data.isActive,
+      generalCategory: data.generalCategory || undefined
+    }));
+    if (data.images) {
+      data.images.forEach(img => formData.append('images', img));
+    }
+    return api.post('/api/products', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  
+  // Update with JSON (for SellerDashboard) or multipart form data (for ProductCreator)
+  update: (id, data) => {
+    const formData = new FormData();
+    formData.append('productData', JSON.stringify({
+      productName: data.productName,
+      description: data.description,
+      price: Number(data.price),
+      stock: Number(data.stock),
+      idCategory: data.idCategory ? Number(data.idCategory) : undefined,
+      isActive: data.isActive,
+      generalCategory: data.generalCategory || undefined
+    }));
+    if (data.images) {
+      data.images.forEach(img => formData.append('images', img));
+    }
+    return api.put(`/api/products/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  
+  // Update JSON only (no images) - for backward compatibility
   updateJson: (id, data) => api.put(`/api/products/${id}/json`, data),
   delete: (id) => api.delete(`/api/products/${id}`),
 };
@@ -140,8 +182,14 @@ export const tokoAPI = {
   getAll: (page = 0, size = 10) => api.get(`/api/toko?page=${page}&size=${size}`),
   getById: (id) => api.get(`/api/toko/${id}`),
   getMyStores: () => api.get('/api/toko/my-stores'),
-  search: (name, page = 0, size = 10) => api.get(`/api/toko/search?name=${name}&page=${page}&size=${size}`),
-  create: (data) => api.post('/api/toko', data),
+  search: (name, page = 0, size = 10) => {
+    if (name && name.trim()) {
+      return api.get(`/api/toko/search?name=${encodeURIComponent(name)}&page=${page}&size=${size}`);
+    } else {
+      return api.get(`/api/toko/search?page=${page}&size=${size}`);
+    }
+  },
+  // Note: POST endpoint tidak tersedia di backend
   update: (id, data) => api.put(`/api/toko/${id}`, data),
   delete: (id) => api.delete(`/api/toko/${id}`),
 };
@@ -168,8 +216,8 @@ export const orderAPI = {
 // PAYMENT API ENDPOINTS
 // ========================
 export const paymentAPI = {
-  updateStatus: (paymentId, data) => api.put(`/api/payments/${paymentId}/status`, data),
-  updateOrderStatus: (orderId, data) => api.put(`/api/payments/${orderId}/order-status`, data),
+  updatePaymentStatus: (orderId, data) => api.put(`/api/payments/orders/${orderId}/payment-status`, data),
+  updateOrderStatus: (orderId, data) => api.put(`/api/payments/orders/${orderId}/order-status`, data),
 };
 
 // ========================
@@ -178,7 +226,7 @@ export const paymentAPI = {
 export const paymentMethodAPI = {
   getAll: () => api.get('/api/payment-methods'),
   getActive: () => api.get('/api/payment-methods/active'),
-  getByType: (type) => api.get(`/api/payment-methods/by-type?type=${type}`),
+  getByType: (type) => api.get(`/api/payment-methods/by-type?type=${encodeURIComponent(type)}`),
 };
 
 // ========================
@@ -199,19 +247,20 @@ export const wishlistAPI = {
   getAll: () => api.get('/api/wishlist'),
   create: (data) => api.post('/api/wishlist', data),
   getById: (id) => api.get(`/api/wishlist/${id}`),
+  getByUserId: (userId) => api.get(`/api/wishlist/user/${userId}`),
   update: (id, data) => api.put(`/api/wishlist/${id}`, data),
   delete: (id) => api.delete(`/api/wishlist/${id}`),
   addProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/add/${productId}`),
-  removeProduct: (wishlistId, productId) => api.delete(`/api/wishlist/${wishlistId}/remove/${productId}`),
+  removeProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/remove/${productId}`),
 };
 
 // ========================
 // DISCOUNT API ENDPOINTS
 // ========================
 export const discountAPI = {
-  getByCode: (promoCode) => api.get(`/api/discounts/${promoCode}`),
+  getByCode: (promoCode) => api.get(`/api/discounts/${encodeURIComponent(promoCode)}`),
   create: (data) => api.post('/api/discounts', data),
-  update: (promoCode, data) => api.put(`/api/discounts/${promoCode}`, data),
+  update: (promoCode, data) => api.put(`/api/discounts/${encodeURIComponent(promoCode)}`, data),
 };
 
 // ========================
@@ -220,7 +269,7 @@ export const discountAPI = {
 export const reviewAPI = {
   getByProduct: (productId) => api.get(`/api/reviews/product/${productId}`),
   create: (data) => api.post('/api/reviews', data),
-  update: (reviewId, data) => api.put(`/api/reviews/${reviewId}`, data),
+  update: (reviewId, data) => api.put(`/api/reviews/${encodeURIComponent(reviewId)}`, data),
 };
 
 // ========================
@@ -235,10 +284,28 @@ export const trackingAPI = {
 // IMAGE UPLOAD API ENDPOINTS
 // ========================
 export const imageAPI = {
-  upload: (formData) => api.post('/api/images/upload', formData, {
+  // Profile image upload
+  uploadProfile: (formData) => api.post('/api/images/upload/profile', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  uploadMultiple: (formData) => api.post('/api/images/upload-multiple', formData, {
+  
+  // Product image upload (single)
+  uploadProduct: (formData) => api.post('/api/images/upload/product', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  
+  // Store image upload
+  uploadStore: (formData) => api.post('/api/images/upload/store', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  
+  // Product multiple images upload
+  uploadProductMultiple: (formData) => api.post('/api/images/upload/product/multiple', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  
+  // General upload
+  upload: (formData) => api.post('/api/images/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 };
