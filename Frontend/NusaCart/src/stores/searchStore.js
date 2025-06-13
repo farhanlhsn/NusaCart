@@ -9,15 +9,14 @@ const useSearchStore = create((set) => ({
   fetchSearchResults: async (q) => {
     set({ loading: true, error: '' });
     try {
-      // Ganti endpoint sesuai backend kamu
-      const res = await api.get(`/api/search?q=${encodeURIComponent(q)}`);
+      const res = await api.get(`/api/products/search?name=${encodeURIComponent(q)}`);
       set({
-        results: res.data.products || [],
-        stores: res.data.stores || [],
+        results: Array.isArray(res.data) ? res.data : (res.data.content || res.data.products || res.data || []),
+        stores: [],
         loading: false
       });
     } catch (err) {
-      set({ error: 'Gagal mencari data. Silakan coba lagi.', loading: false });
+      set({ error: 'Gagal mencari produk. Silakan coba lagi.', loading: false });
     }
   },
   setDummy: (q) => {

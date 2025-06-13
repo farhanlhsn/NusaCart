@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import api from '../services/api';
+import { cartAPI, orderAPI } from '../services/api';
 
 const useCartStore = create(
   persist(
@@ -43,7 +43,7 @@ const useCartStore = create(
       fetchCartItems: async () => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.get('/api/cart');
+          const response = await cartAPI.get();
           
           // Transform API response to frontend format
           const cartItems = response.data.map(item => ({
@@ -75,7 +75,7 @@ const useCartStore = create(
       addProductToCart: async (productId, quantity = 1) => {
         set({ isLoading: true, error: null });
         try {
-          await api.post('/api/cart', {
+          await cartAPI.add({
             productId: productId,
             quantity: quantity
           });
@@ -94,7 +94,7 @@ const useCartStore = create(
       removeProductFromCart: async (cartItemId) => {
         set({ isLoading: true, error: null });
         try {
-          await api.delete(`/api/cart/${cartItemId}`);
+          await cartAPI.remove(cartItemId);
           
           // Remove from local state
           set(state => ({
@@ -118,7 +118,7 @@ const useCartStore = create(
 
         set({ isLoading: true, error: null });
         try {
-          await api.put(`/api/cart/${cartItemId}?quantity=${newQuantity}`);
+          await cartAPI.updateQuantity(cartItemId, newQuantity);
           
           // Update local state
           set(state => ({
@@ -195,7 +195,7 @@ const useCartStore = create(
             items: orderItems
           };
           
-          const response = await api.post('/api/orders', orderPayload);
+          const response = await orderAPI.place(orderPayload);
           
           // Clear checkout items and refresh cart after successful order
           set({ checkoutItems: [], isLoading: false });

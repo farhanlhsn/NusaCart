@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useCartStore from "../stores/cartStore";
+import useAddressStore from "../stores/addressStore";
+import usePaymentMethodStore from "../stores/paymentMethodStore";
+import useAuthStore from "../stores/authStore";
+import AddressSelectionModal from "../components/AddressSelectionModal";
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
     
-    // Zustand store
+    // Zustand stores
     const { checkoutItems, updateQuantity, clearCheckoutItems, createOrder } = useCartStore();
+    const { addresses, fetchAddresses, loading: addressLoading } = useAddressStore();
+    const { paymentMethods, fetchPaymentMethods } = usePaymentMethodStore();
+    const { user, isLoggedIn } = useAuthStore();
     
     const [kuponCode, setKuponCode] = useState("");
     const [selectedPayment, setSelectedPayment] = useState("");
-    
-    // Shipping address data (you can make this editable)
-    const [shippingAddress, setShippingAddress] = useState({
-        name: "Nama User",
-        phone: "081234567890",
-        address: "Jl. Telekomunikasi No.1, Sukapura, Kec. Dayeuhkolot, Kabupaten Bandung, Jawa Barat 40267"
-    });
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [showAddressModal, setShowAddressModal] = useState(false);
 
     // Group cart items by store
     const itemsByStore = checkoutItems.reduce((acc, item) => {
@@ -36,12 +38,29 @@ export default function CheckoutPage() {
     const shippingCost = 0; // Free shipping
     const total = subtotal + shippingCost;
 
-    // Redirect to cart if no checkout items
+    // Initialize data and check authentication
     useEffect(() => {
+        if (!isLoggedIn) {
+            navigate('/login');
+            return;
+        }
+        
         if (checkoutItems.length === 0) {
             navigate('/cart');
+            return;
         }
-    }, [checkoutItems, navigate]);
+        
+        fetchAddresses();
+        fetchPaymentMethods();
+    }, [checkoutItems, isLoggedIn, navigate, fetchAddresses, fetchPaymentMethods]);
+    
+    // Set default selected address
+    useEffect(() => {
+        if (addresses.length > 0 && !selectedAddress) {
+            const primaryAddress = addresses.find(addr => addr.isPrimary) || addresses[0];
+            setSelectedAddress(primaryAddress);
+        }
+    }, [addresses, selectedAddress]);
 
     const handleQuantityChange = (id, delta) => {
         updateQuantity(id, delta);
@@ -53,58 +72,51 @@ export default function CheckoutPage() {
     };
 
     const handleCreateOrder = async () => {
+        if (!selectedAddress) {
+            alert("Silakan pilih alamat pengiriman");
+            return;
+        }
+        
         if (!selectedPayment) {
             alert("Silakan pilih metode pembayaran");
             return;
         }
         
         const orderData = {
-            shippingAddress,
-            paymentMethod: selectedPayment,
-            addressId: 1, // Default address ID - should be dynamic based on user's addresses
-            address: shippingAddress.address
+            addressId: selectedAddress.id,
+            paymentMethodId: selectedPayment,
+            items: checkoutItems.map(item => ({
+                productId: item.id,
+                quantity: item.qty,
+                price: item.price
+            })),
+            subtotal,
+            shippingCost,
+            total
         };
         
         try {
             const result = await createOrder(orderData);
             console.log("Order created successfully:", result);
             
-            // Navigate to success page or process payment
-            alert("Pesanan berhasil dibuat!");
-            navigate('/cart'); // Redirect back to cart
+            // Navigate to payment page
+            navigate('/payment', { 
+                state: { 
+                    orderData: {
+                        ...result,
+                        subtotal,
+                        shippingCost,
+                        total
+                    }
+                } 
+            });
         } catch (error) {
             console.error("Failed to create order:", error);
             alert("Gagal membuat pesanan. Silakan coba lagi.");
         }
     };
 
-    const paymentMethods = [
-        {
-            id: "mandiri",
-            name: "Mandiri",
-            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/2560px-Bank_Mandiri_logo_2016.svg.png"
-        },
-        {
-            id: "bca",
-            name: "BCA", 
-            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank_Central_Asia.svg/2560px-Bank_Central_Asia.svg.png"
-        },
-        {
-            id: "bri",
-            name: "BRI",
-            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/BRI_2020.svg/2560px-BRI_2020.svg.png"
-        },
-        {
-            id: "qris",
-            name: "QRIS",
-            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/QRIS_logo.svg/2560px-QRIS_logo.svg.png"
-        },
-        {
-            id: "dana",
-            name: "E-Wallet",
-            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/2560px-Logo_dana_blue.svg.png"
-        }
-    ];
+
 
     return (
         <div className="min-h-screen bg-gray-50 p-4">
@@ -136,12 +148,44 @@ export default function CheckoutPage() {
                         <div className="lg:col-span-2 space-y-6">
                             {/* Shipping Address */}
                             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-                                <h2 className="text-xl font-bold text-gray-800 mb-4">Alamat Pengiriman</h2>
-                                <div className="space-y-2">
-                                    <p className="font-semibold text-gray-800">Rumah - {shippingAddress.name}</p>
-                                    <p className="text-gray-600">{shippingAddress.phone}</p>
-                                    <p className="text-gray-600">{shippingAddress.address}</p>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-bold text-gray-800">Alamat Pengiriman</h2>
+                                    <button
+                                        onClick={() => setShowAddressModal(true)}
+                                        className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+                                    >
+                                        Ubah Alamat
+                                    </button>
                                 </div>
+                                
+                                {addressLoading ? (
+                                    <div className="space-y-2">
+                                        <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                                        <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                                    </div>
+                                ) : selectedAddress ? (
+                                    <div className="space-y-2">
+                                        <p className="font-semibold text-gray-800">{selectedAddress.label} - {selectedAddress.recipientName}</p>
+                                        <p className="text-gray-600">{selectedAddress.phone}</p>
+                                        <p className="text-gray-600">{selectedAddress.fullAddress}</p>
+                                        {selectedAddress.isPrimary && (
+                                            <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                                Alamat Utama
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <p className="text-gray-500 mb-2">Belum ada alamat pengiriman</p>
+                                        <button
+                                            onClick={() => setShowAddressModal(true)}
+                                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                                        >
+                                            Tambah Alamat
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Product List */}
@@ -211,7 +255,7 @@ export default function CheckoutPage() {
                             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
                                 <h2 className="text-xl font-bold text-gray-800 mb-6">Metode Pembayaran</h2>
                                 <div className="space-y-4">
-                                    {paymentMethods.map(method => (
+                                    {paymentMethods.length > 0 ? paymentMethods.map(method => (
                                         <label 
                                             key={method.id} 
                                             className="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
@@ -225,15 +269,26 @@ export default function CheckoutPage() {
                                                     onChange={(e) => setSelectedPayment(e.target.value)}
                                                     className="mr-3"
                                                 />
-                                                <span className="font-medium">{method.name}</span>
+                                                <div>
+                                                    <span className="font-medium">{method.name}</span>
+                                                    {method.description && (
+                                                        <p className="text-sm text-gray-500">{method.description}</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <img 
-                                                src={method.logo} 
-                                                alt={method.name}
-                                                className="h-8 w-auto object-contain"
-                                            />
+                                            {method.logo && (
+                                                <img 
+                                                    src={method.logo} 
+                                                    alt={method.name}
+                                                    className="h-8 w-auto object-contain"
+                                                />
+                                            )}
                                         </label>
-                                    ))}
+                                    )) : (
+                                        <div className="text-center py-4">
+                                            <p className="text-gray-500">Loading payment methods...</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Coupon Code */}
@@ -285,6 +340,14 @@ export default function CheckoutPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Address Selection Modal */}
+            <AddressSelectionModal
+                isOpen={showAddressModal}
+                onClose={() => setShowAddressModal(false)}
+                onSelectAddress={setSelectedAddress}
+                selectedAddressId={selectedAddress?.id}
+            />
         </div>
     );
 }
