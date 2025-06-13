@@ -44,12 +44,23 @@ public class ProductController {
         this.productService = productService;
     }
     
-    // Get all products with pagination
+    // Get all products with pagination and optional filters
     @GetMapping
     public ResponseEntity<?> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        log.info("GET request to fetch products with pagination - page: {}, size: {}", page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) Integer tokoId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Integer minStock,
+            @RequestParam(required = false) String productName,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection,
+            @RequestParam(defaultValue = "true") Boolean activeOnly) {
+        
+        log.info("GET request to fetch products with pagination and filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
+                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
         
         // Validate pagination parameters
         if (page < 0) {
@@ -66,7 +77,24 @@ public class ProductController {
             ));
         }
         
-        Map<String, Object> response = productService.getPaginatedProducts(page, size);
+        // Validate price range
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Minimum price cannot be greater than maximum price"
+            ));
+        }
+        
+        // Validate sort direction
+        if (sortDirection != null && !sortDirection.equalsIgnoreCase("asc") && !sortDirection.equalsIgnoreCase("desc")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", "Sort direction must be 'asc' or 'desc'"
+            ));
+        }
+        
+        Map<String, Object> response = productService.getPaginatedProductsWithFilters(
+            page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
         return ResponseEntity.ok(response);
     }
     
