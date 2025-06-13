@@ -127,6 +127,30 @@ export const categoryAPI = {
 export const productAPI = {
   getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
   getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
+
+  // Get all products with comprehensive filtering
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    // Basic pagination
+    queryParams.append('page', params.page || 0);
+    queryParams.append('size', params.size || 10);
+    
+    // Optional filters
+    if (params.categoryId) queryParams.append('categoryId', params.categoryId);
+    if (params.tokoId) queryParams.append('tokoId', params.tokoId);
+    if (params.minPrice) queryParams.append('minPrice', params.minPrice);
+    if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice);
+    if (params.minStock) queryParams.append('minStock', params.minStock);
+    if (params.productName) queryParams.append('productName', params.productName);
+    if (params.generalCategory) queryParams.append('generalCategory', params.generalCategory);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
+    if (params.activeOnly !== undefined) queryParams.append('activeOnly', params.activeOnly);
+    
+    return api.get(`/api/products?${queryParams.toString()}`);
+  },
+  
   getById: (id) => api.get(`/api/products/${id}`),
   getByTokoId: (tokoId, page = 0, size = 10) => api.get(`/api/products/toko/${tokoId}?page=${page}&size=${size}`),
   getByCategoryId: (categoryId) => api.get(`/api/products/category/${categoryId}`),
