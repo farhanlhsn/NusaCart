@@ -8,7 +8,9 @@ import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.ReviewRepository;
 import com.TryCatch.NusaCart.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
 
 import java.util.Date;
 import java.util.List;
@@ -21,9 +23,6 @@ public class ReviewService {
     private ReviewRepository reviewRepository;
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
     private ProductRepository productRepository;
 
     public List<ReviewDTO> getReviewsByProduct(int productId) {
@@ -31,9 +30,14 @@ public class ReviewService {
         return reviewRepository.findByProduct(product).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    public void createReview(ReviewDTO dto) {
-        UserEntity user = userRepository.findByUserId(dto.getUserId()).orElseThrow();
-        ProductEntity product = productRepository.findById(dto.getProductId()).orElseThrow();
+    private UserEntity getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return (UserEntity) auth.getPrincipal();
+    }
+
+    public void createReviewByProduct(Integer productId, ReviewDTO dto) {
+        UserEntity user = getCurrentUser();
+        ProductEntity product = productRepository.findById(productId).orElseThrow();
 
         ReviewEntity review = ReviewEntity.builder()
                 .user(user)
@@ -45,6 +49,7 @@ public class ReviewService {
 
         reviewRepository.save(review);
     }
+
 
     public void updateReview(Integer reviewId, ReviewDTO dto) {
         ReviewEntity review = reviewRepository.findByReviewId(reviewId).orElseThrow();
