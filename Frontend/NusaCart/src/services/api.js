@@ -268,6 +268,7 @@ export const wishlistAPI = {
   getAll: () => api.get('/api/wishlist'),
   create: (data) => api.post('/api/wishlist', data),
   getById: (id) => api.get(`/api/wishlist/${id}`),
+  getByUserId: (userId) => api.get(`/api/wishlist/user/${userId}`),
   update: (id, data) => api.put(`/api/wishlist/${id}`, data),
   delete: (id) => api.delete(`/api/wishlist/${id}`),
   addProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/add/${productId}`),
