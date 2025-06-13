@@ -2,6 +2,8 @@ package com.TryCatch.NusaCart.dto;
 
 import java.util.List;
 
+import com.TryCatch.NusaCart.enums.GeneralCategory;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -37,6 +39,9 @@ public class ProductCreateDTO {
     private List<String> imageUrls;
     
     private Integer idCategory;
+    
+    @NotNull(message = "General category tidak boleh kosong")
+    private GeneralCategory generalCategory;
     
     private Boolean isActive = true;
 }
