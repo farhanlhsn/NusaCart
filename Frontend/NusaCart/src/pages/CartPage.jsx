@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import useCartStore from "../stores/cartStore";
 
@@ -25,15 +25,15 @@ export default function CartPage() {
 
     const [storeSelections, setStoreSelections] = useState({});
 
-    // Get computed values
-    const productsByStore = getProductsByStore();
+    // Memoize computed values to prevent infinite loops
+    const productsByStore = useMemo(() => getProductsByStore(), [products]);
     const subtotal = getSubtotal();
     const allSelected = products.length > 0 && products.every(p => p.checked);
 
     // Fetch cart items on mount
     useEffect(() => {
         fetchCartItems();
-    }, [fetchCartItems]);
+    }, []); // Remove fetchCartItems from dependency array
 
     useEffect(() => {
         // Update store selections
@@ -42,7 +42,7 @@ export default function CartPage() {
             newStoreSelections[storeId] = storeData.products.every(p => p.checked);
         });
         setStoreSelections(newStoreSelections);
-    }, [products, productsByStore]);
+    }, [productsByStore]); // Only depend on memoized productsByStore
 
     const handleCheckout = () => {
         const checkedItems = getCheckedItems();

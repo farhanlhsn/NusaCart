@@ -22,7 +22,7 @@ const ProductDetail = () => {
     clearCurrentProduct 
   } = useProductStore();
 
-  const { addToCart, loading: cartLoading } = useCartStore();
+  const { addProductToCart, loading: cartLoading } = useCartStore();
   const { addToWishlist, loading: wishlistLoading } = useWishlistStore();
   const { 
     fetchReviewsByProduct, 
@@ -52,10 +52,7 @@ const ProductDetail = () => {
     }
 
     try {
-      await addToCart({
-        productId: currentProduct.productId,
-        quantity: quantity
-      });
+      await addProductToCart(currentProduct.productId, quantity);
       alert('Product added to cart successfully!');
     } catch (error) {
       alert(error.message || 'Failed to add to cart');
@@ -143,7 +140,11 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
             <img
-              src={currentProduct.imageUrls?.[selectedImageIndex] || '/placeholder-image.png'}
+              src={currentProduct.imageUrls?.[selectedImageIndex] 
+                ? (currentProduct.imageUrls[selectedImageIndex].startsWith('http') 
+                   ? currentProduct.imageUrls[selectedImageIndex] 
+                   : `http://localhost:6060${currentProduct.imageUrls[selectedImageIndex]}`)
+                : '/placeholder-image.png'}
               alt={currentProduct.productName}
               className="w-full h-full object-cover"
             />
@@ -160,7 +161,7 @@ const ProductDetail = () => {
                   }`}
                 >
                   <img
-                    src={url}
+                    src={url.startsWith('http') ? url : `http://localhost:6060${url}`}
                     alt={`${currentProduct.productName} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />

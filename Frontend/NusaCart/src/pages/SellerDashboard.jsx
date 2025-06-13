@@ -119,9 +119,12 @@ const SellerDashboard = () => {
       idCategory: '',
       imageUrl: '',
       isActive: true,
+      generalCategory: 'LAINNYA'
     });
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
+    const [selectedImages, setSelectedImages] = React.useState([]);
+
     React.useEffect(() => {
       if (product) setForm(product);
     }, [product]);
@@ -137,32 +140,64 @@ const SellerDashboard = () => {
     const handleImage = (url) => {
       setForm({ ...form, imageUrl: url });
     };
+    const handleFileChange = (e) => {
+      const files = Array.from(e.target.files);
+      setSelectedImages(files);
+    };
     const handleSubmit = async (e) => {
       e.preventDefault();
       setSaving(true);
       setErr('');
       try {
-        const payload = {
-          productName: form.productName,
-          description: form.description,
-          price: Number(form.price),
-          stock: Number(form.stock),
-          idToko: tokoId,
-          imageUrl: form.imageUrl,
-          idCategory: form.idCategory ? Number(form.idCategory) : undefined,
-          isActive: form.isActive,
-        };
+        // Selalu gunakan FormData
+        const formData = new FormData();
+        
         if (product && product.productId) {
-          await api.put(`/api/products/${product.productId}`, payload);
+          // UPDATE produk - field sesuai ProductUpdateDTO (TANPA idToko)
+          const productDataJson = {
+            productName: form.productName,
+            description: form.description,
+            price: Number(form.price),
+            stock: Number(form.stock),
+            idCategory: form.idCategory ? Number(form.idCategory) : undefined,
+            isActive: form.isActive,
+            generalCategory: form.generalCategory
+          };
+          formData.append('productData', JSON.stringify(productDataJson));
+          if (selectedImages.length > 0) {
+            selectedImages.forEach(img => formData.append('images', img));
+          }
+          await api.put(`/api/products/${product.productId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
         } else {
-          await api.post('/api/products', payload);
+          // CREATE produk - field sesuai ProductCreateDTO (DENGAN idToko)
+          if (selectedImages.length === 0) {
+            throw new Error('Gambar produk wajib diisi untuk produk baru');
+          }
+          const productDataJson = {
+            productName: form.productName,
+            description: form.description,
+            price: Number(form.price),
+            stock: Number(form.stock),
+            idToko: tokoId,
+            idCategory: form.idCategory ? Number(form.idCategory) : undefined,
+            isActive: form.isActive,
+            generalCategory: form.generalCategory
+          };
+          formData.append('productData', JSON.stringify(productDataJson));
+          selectedImages.forEach(img => formData.append('images', img));
+          await api.post('/api/products', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
         }
+        
         onSave();
         if (onCategoryAdded) {
           onCategoryAdded(form);
         }
       } catch (error) {
-        setErr('Gagal menyimpan produk');
+        setErr(error.response?.data?.message || error.message || 'Gagal menyimpan produk');
       } finally {
         setSaving(false);
       }
@@ -200,8 +235,43 @@ const SellerDashboard = () => {
             <button type="button" onClick={() => setShowCategoryModal(true)} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition">Tambah Kategori</button>
           </div>
           <div className="mb-4">
-            <label className="block mb-2 font-medium">Gambar Produk</label>
-            <ImageUpload imageType="product" currentImageUrl={form.imageUrl} onImageUpdate={handleImage} />
+            <label className="block mb-2 font-medium">Kategori Umum *</label>
+            <select name="generalCategory" value={form.generalCategory} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required>
+              <option value="ELEKTRONIK">Elektronik</option>
+              <option value="FURNITUR">Furnitur</option>
+              <option value="PAKAIAN">Pakaian</option>
+              <option value="MAKANAN_MINUMAN">Makanan & Minuman</option>
+              <option value="KESEHATAN_KECANTIKAN">Kesehatan & Kecantikan</option>
+              <option value="OLAHRAGA_OUTDOOR">Olahraga & Outdoor</option>
+              <option value="OTOMOTIF">Otomotif</option>
+              <option value="BUKU_ALAT_TULIS">Buku & Alat Tulis</option>
+              <option value="MAINAN_HOBI">Mainan & Hobi</option>
+              <option value="RUMAH_TANGGA">Rumah Tangga</option>
+              <option value="PERHIASAN_AKSESORIS">Perhiasan & Aksesoris</option>
+              <option value="LAINNYA">Lainnya</option>
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Gambar Produk {!product && '*'}</label>
+            <input 
+              type="file" 
+              multiple 
+              accept="image/*" 
+              onChange={handleFileChange}
+              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition"
+            />
+            {form.imageUrl && (
+              <img 
+                src={form.imageUrl.startsWith('http') ? form.imageUrl : `http://localhost:6060${form.imageUrl}`} 
+                alt="Current" 
+                className="w-24 h-24 mt-2 object-cover rounded border" 
+              />
+            )}
+            {selectedImages.length > 0 && (
+              <div className="mt-2 text-sm text-green-600">
+                {selectedImages.length} gambar dipilih
+              </div>
+            )}
           </div>
           <div className="mb-4 flex items-center gap-2">
             <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="isActive" />
@@ -428,7 +498,9 @@ const SellerDashboard = () => {
                     {products.map((product) => (
                       <div key={product.productId} className="bg-gray-50 rounded-xl shadow hover:shadow-xl transition-all p-4 flex flex-col gap-2 border border-gray-100">
                         <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden mb-2 flex items-center justify-center">
-                          {product.imageUrl ? (
+                          {product.imageUrls && product.imageUrls.length > 0 ? (
+                            <img src={product.imageUrls[0].startsWith('http') ? product.imageUrls[0] : `http://localhost:6060${product.imageUrls[0]}`} alt={product.productName} className="w-full h-full object-cover" />
+                          ) : product.imageUrl ? (
                             <img src={`http://localhost:6060${product.imageUrl}`} alt={product.productName} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">IMG</div>
@@ -464,7 +536,9 @@ const SellerDashboard = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0 mr-4 overflow-hidden">
-                                  {product.imageUrl ? (
+                                  {product.imageUrls && product.imageUrls.length > 0 ? (
+                                    <img src={product.imageUrls[0].startsWith('http') ? product.imageUrls[0] : `http://localhost:6060${product.imageUrls[0]}`} alt={product.productName} className="w-14 h-14 rounded-lg object-cover" />
+                                  ) : product.imageUrl ? (
                                     <img src={`http://localhost:6060${product.imageUrl}`} alt={product.productName} className="w-14 h-14 rounded-lg object-cover" />
                                   ) : (
                                     <div className="w-14 h-14 bg-gray-300 rounded-lg flex items-center justify-center text-gray-500 text-xs">IMG</div>
@@ -557,4 +631,4 @@ const SellerDashboard = () => {
   );
 };
 
-export default SellerDashboard; 
+export default SellerDashboard;

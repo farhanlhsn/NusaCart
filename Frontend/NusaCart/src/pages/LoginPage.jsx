@@ -1,8 +1,7 @@
 import React, { useEffect } from "react";
 import logo from "../assets/Logo.png";
 import asset from "../assets/loginNregister.png";
-import useAuthStore from "../stores/authStore";	
-import api from "../services/api";
+import useAuthStore from "../stores/authStore";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -39,16 +38,14 @@ export default function LoginPage() {
 		
 		try {
 			console.log("Sending data to server:", formData);
-			const response = await api.post("/api/auth/login", formData);
+			// Use authStore login method instead of direct API call to avoid double request
+			const result = await login(formData);
 			
-			if (response.status === 200) {
-				console.log("Login successful:", response.data);
-				setSuccess("Login berhasil! Mengalihkan...");
-				login(response.data);
-				setTimeout(() => {
-					navigate("/home");
-				}, 1500);
-			}
+			console.log("Login successful:", result);
+			setSuccess("Login berhasil! Mengalihkan...");
+			setTimeout(() => {
+				navigate("/home");
+			}, 1500);
 
 		} catch (error) {
 			console.error("Login error:", error);
@@ -56,7 +53,7 @@ export default function LoginPage() {
 				if (error.response.status === 500) {
 					setError("Terjadi kesalahan pada server. Silakan coba lagi nanti.");
 				} else {
-					setError(`${error.response.data?.message}`);
+					setError(`${error.response.data?.message || 'Login gagal'}`);
 				}
 			} else if (error.request) {
 				setError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
