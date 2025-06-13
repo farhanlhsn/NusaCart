@@ -1,17 +1,12 @@
 package com.TryCatch.NusaCart.controller;
 
 import com.TryCatch.NusaCart.dto.WishlistResponseDTO;
-import com.TryCatch.NusaCart.dto.WishlistDTO;
-import com.TryCatch.NusaCart.dto.WishlistResponseDTO;
-import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.service.WishlistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wishlist")
