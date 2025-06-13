@@ -143,7 +143,7 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
             <img
-              src={currentProduct.imageUrls?.[selectedImageIndex] || '/placeholder-image.png'}
+              src={`http://localhost:6060${currentProduct.imageUrls?.[selectedImageIndex]}` || '/placeholder-image.png'}
               alt={currentProduct.productName}
               className="w-full h-full object-cover"
             />
