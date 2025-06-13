@@ -3,9 +3,13 @@ package com.TryCatch.NusaCart.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.TryCatch.NusaCart.enums.GeneralCategory;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -53,6 +57,10 @@ public class ProductEntity {
     @ManyToOne
     @JoinColumn(name = "id_category")
     private CategoryEntity category;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "general_category", nullable = false)
+    private GeneralCategory generalCategory;
     
     @Column(nullable = false)
     private Boolean isActive;
