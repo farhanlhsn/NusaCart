@@ -59,7 +59,7 @@ const useAddressStore = create((set, get) => ({
   deleteAddress: async (addressId) => {
     set({ loading: true, error: '' });
     try {
-      await api.delete(`/api/address/${addressId}`);
+      await api.delete(`/api/address/remove_address/${addressId}`);
       await get().fetchAddresses();
     } catch (err) {
       set({ error: err.response?.data?.message || 'Gagal menghapus alamat.' });

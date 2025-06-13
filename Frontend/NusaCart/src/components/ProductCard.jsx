@@ -7,6 +7,16 @@ const ProductCard = ({ product }) => {
     const originalPrice = product.price * 1.35;
     const discount = Math.round(((originalPrice - product.price) / originalPrice) * 100);
 
+    // Ambil gambar produk: imageUrl (string) atau imageUrls[0] (array)
+    let imageSrc = null;
+    if (product.imageUrl) {
+        imageSrc = `http://localhost:6060${product.imageUrl}`;
+    } else if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+        imageSrc = product.imageUrls[0].startsWith('http')
+            ? product.imageUrls[0]
+            : `http://localhost:6060${product.imageUrls[0]}`;
+    }
+
     return (
         <div 
             onClick={() => navigate(`/product/${product.productId}`)}
@@ -26,9 +36,9 @@ const ProductCard = ({ product }) => {
             
             {/* Gambar produk */}
             <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-                {product.imageUrl ? (
+                {imageSrc ? (
                     <img
-                        src={`http://localhost:6060${product.imageUrl}`}
+                        src={imageSrc}
                         alt={product.productName}
                         className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
