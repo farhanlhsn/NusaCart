@@ -72,7 +72,7 @@ public class CartService {
         // Find or create cart
         CartEntity cart = cartRepository.findByUser(user).orElseGet(() -> {
             CartEntity newCart = new CartEntity();
-            newCart.setUserid(user.getUserId());
+            newCart.setUser(user);
             return cartRepository.save(newCart);
         });
 
@@ -104,7 +104,7 @@ public class CartService {
         
         // Verify cart item belongs to current user
         UserEntity currentUser = getCurrentUser();
-        if (!cartItem.getCart().getUserid().equals(currentUser.getUserId())) {
+        if (!cartItem.getCart().getUser().getUserId().equals(currentUser.getUserId())) {
             throw new RuntimeException("Unauthorized access to cart item");
         }
         
