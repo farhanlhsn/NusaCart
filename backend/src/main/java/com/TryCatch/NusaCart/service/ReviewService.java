@@ -50,6 +50,7 @@ public class ReviewService {
         reviewRepository.save(review);
     }
 
+
     public void updateReview(Integer reviewId, ReviewDTO dto) {
         ReviewEntity review = reviewRepository.findByReviewId(reviewId).orElseThrow();
         review.editReview(dto.getComment(), dto.getRating());
