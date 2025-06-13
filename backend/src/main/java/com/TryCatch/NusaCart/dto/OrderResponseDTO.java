@@ -12,4 +12,7 @@ public class OrderResponseDTO {
     private Double total;
     private LocalDateTime createdAt;
     private String address;
+    private PaymentMethodDTO paymentMethod;
+    private String paymentStatus;
+    private String orderStatus;
 }

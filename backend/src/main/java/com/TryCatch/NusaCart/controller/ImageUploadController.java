@@ -1,5 +1,7 @@
 package com.TryCatch.NusaCart.controller;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,6 +111,77 @@ public class ImageUploadController {
     }
 
     /**
+     * Upload multiple gambar produk
+     */
+    @PostMapping("/upload/product/multiple")
+    public ResponseEntity<Map<String, Object>> uploadMultipleProductImages(
+            @Valid @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "oldImageUrls", required = false) List<String> oldImageUrls) {
+        
+        log.info("Uploading {} product images", files.length);
+        
+        try {
+            // Validasi minimal 1 file
+            if (files == null || files.length == 0) {
+                return new ResponseEntity<>(
+                    Map.of("status", "error", "message", "Minimal harus upload 1 foto produk"), 
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+            
+            // Validasi maksimal 5 file
+            if (files.length > 5) {
+                return new ResponseEntity<>(
+                    Map.of("status", "error", "message", "Maksimal hanya bisa upload 5 foto produk"), 
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+            
+            List<String> uploadedUrls = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            
+            // Hapus gambar lama jika ada
+            if (oldImageUrls != null && !oldImageUrls.isEmpty()) {
+                for (String oldUrl : oldImageUrls) {
+                    imageUploadService.deleteImage(oldUrl);
+                }
+            }
+            
+            // Upload setiap file
+            for (MultipartFile file : files) {
+                Map<String, String> uploadResult = imageUploadService.uploadAndCompressImage(
+                    file, 
+                    ImageUploadService.ImageType.PRODUCT, 
+                    null
+                );
+                
+                if ("success".equals(uploadResult.get("status"))) {
+                    uploadedUrls.add(uploadResult.get("imageUrl"));
+                } else {
+                    errors.add(uploadResult.get("message"));
+                }
+            }
+            
+            Map<String, Object> response = Map.of(
+                "status", errors.isEmpty() ? "success" : "partial_success",
+                "message", errors.isEmpty() ? "Semua gambar berhasil diupload" : "Beberapa gambar gagal diupload",
+                "imageUrls", uploadedUrls,
+                "errors", errors
+            );
+            
+            HttpStatus status = errors.isEmpty() ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT;
+            return new ResponseEntity<>(response, status);
+            
+        } catch (Exception e) {
+            log.error("Error uploading multiple product images: {}", e.getMessage());
+            return new ResponseEntity<>(
+                Map.of("status", "error", "message", "Gagal mengupload gambar produk: " + e.getMessage()), 
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    /**
      * Upload gambar universal dengan parameter tipe
      */
     @PostMapping("/upload")
@@ -139,4 +212,4 @@ public class ImageUploadController {
             );
         }
     }
-} 
+}

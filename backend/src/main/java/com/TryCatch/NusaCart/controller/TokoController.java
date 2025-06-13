@@ -113,14 +113,6 @@ public class TokoController {
         return ResponseEntity.ok(response);
     }
     
-    // Create a new store
-    @PostMapping
-    public ResponseEntity<TokoDTO> createStore(@Valid @RequestBody TokoCreateDTO tokoCreateDTO) {
-        log.info("POST request to create a new store");
-        TokoDTO createdStore = tokoService.createToko(tokoCreateDTO);
-        return new ResponseEntity<>(createdStore, HttpStatus.CREATED);
-    }
-    
     // Update a store
     @PutMapping("/{idToko}")
     public ResponseEntity<TokoDTO> updateStore(

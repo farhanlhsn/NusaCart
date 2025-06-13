@@ -40,6 +40,9 @@ public class ProductService {
     @Autowired
     private UserService userService;
     
+    @Autowired
+    private ImageUploadService imageUploadService;
+    
     public ProductService(ProductRepository productRepository, TokoRepository tokoRepository, 
                          CategoryRepository categoryRepository, UserService userService) {
         this.productRepository = productRepository;
@@ -222,7 +225,8 @@ public class ProductService {
                 .price(productCreateDTO.getPrice())
                 .stock(productCreateDTO.getStock())
                 .toko(toko)
-                .imageUrl(productCreateDTO.getImageUrl())
+
+                .imageUrls(productCreateDTO.getImageUrls())
                 .category(category)
                 .isActive(productCreateDTO.getIsActive())
                 .build();
@@ -272,8 +276,10 @@ public class ProductService {
             existingProduct.setStock(productUpdateDTO.getStock());
         }
         
-        if (productUpdateDTO.getImageUrl() != null) {
-            existingProduct.setImageUrl(productUpdateDTO.getImageUrl());
+
+        
+        if (productUpdateDTO.getImageUrls() != null) {
+            existingProduct.setImageUrls(productUpdateDTO.getImageUrls());
         }
         
         if (productUpdateDTO.getIdCategory() != null) {
@@ -307,6 +313,13 @@ public class ProductService {
         // Check if current user is the owner of the toko
         if (!existingProduct.getToko().getSeller().getUserId().equals(currentUser.getUserId())) {
             throw new AccessDeniedException("Anda tidak memiliki akses untuk menghapus produk ini");
+        }
+        
+        // Delete images from imageUrls list
+        if (existingProduct.getImageUrls() != null) {
+            for (String imageUrl : existingProduct.getImageUrls()) {
+                imageUploadService.deleteImage(imageUrl);
+            }
         }
         
         productRepository.delete(existingProduct);

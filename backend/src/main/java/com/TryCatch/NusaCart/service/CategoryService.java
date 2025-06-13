@@ -199,7 +199,7 @@ public class CategoryService {
     
     // Update a category
     @Transactional
-    public CategoryDTO updateCategory(Integer idCategory, CategoryUpdateDTO categoryUpdateDTO) {
+    public Map<String, Object> updateCategory(Integer idCategory, CategoryUpdateDTO categoryUpdateDTO) {
         log.info("Updating category with ID: {}", idCategory);
         
         // Get current authenticated user
@@ -220,14 +220,16 @@ public class CategoryService {
             throw new IllegalArgumentException("Kategori dengan nama '" + categoryUpdateDTO.getNamaCategory() + "' sudah ada di toko ini");
         }
         
-        // Update category
         category.setNamaCategory(categoryUpdateDTO.getNamaCategory());
         
-        // Save and return
         CategoryEntity updatedCategory = categoryRepository.save(category);
         log.info("Category updated: {}", updatedCategory.getIdCategory());
         
-        return new CategoryDTO(updatedCategory);
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "Kategori berhasil diperbarui");
+        response.put("data", new CategoryDTO(updatedCategory));
+        return response;
     }
     
     // Delete a category

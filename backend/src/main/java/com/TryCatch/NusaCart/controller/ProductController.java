@@ -1,9 +1,12 @@
 package com.TryCatch.NusaCart.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,7 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.TryCatch.NusaCart.dto.ProductCreateDTO;
 import com.TryCatch.NusaCart.dto.ProductDTO;
 import com.TryCatch.NusaCart.dto.ProductUpdateDTO;
+import com.TryCatch.NusaCart.service.ImageUploadService;
 import com.TryCatch.NusaCart.service.ProductService;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +36,9 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
+    
+    @Autowired
+    private ImageUploadService imageUploadService;
     
     public ProductController(ProductService productService) {
         this.productService = productService;
@@ -134,15 +142,60 @@ public class ProductController {
         return ResponseEntity.ok(products);
     }
     
-    // Create new product
+    // Create new product with images
     @PostMapping
-    public ResponseEntity<?> createProduct(@Valid @RequestBody ProductCreateDTO productCreateDTO) {
-        log.info("POST request to create new product: {}", productCreateDTO.getProductName());
+    public ResponseEntity<?> createProduct(
+            @Valid @RequestParam("productData") String productDataJson,
+            @RequestParam("images") MultipartFile[] images) {
+        
+        log.info("POST request to create new product with {} images", images.length);
         
         try {
+            // Validasi minimal 1 foto
+            if (images == null || images.length == 0) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Produk harus memiliki minimal 1 foto"
+                ));
+            }
+            
+            // Parse JSON data
+            ObjectMapper objectMapper = new ObjectMapper();
+            ProductCreateDTO productCreateDTO = objectMapper.readValue(productDataJson, ProductCreateDTO.class);
+            
+            // Upload images first
+            List<String> imageUrls = new ArrayList<>();
+            for (MultipartFile image : images) {
+                Map<String, String> uploadResult = imageUploadService.uploadAndCompressImage(
+                    image, 
+                    ImageUploadService.ImageType.PRODUCT, 
+                    null
+                );
+                
+                if ("success".equals(uploadResult.get("status"))) {
+                    imageUrls.add(uploadResult.get("imageUrl"));
+                } else {
+                    // If any image fails, delete already uploaded images
+                    for (String uploadedUrl : imageUrls) {
+                        imageUploadService.deleteImage(uploadedUrl);
+                    }
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Gagal mengupload gambar: " + uploadResult.get("message")
+                    ));
+                }
+            }
+            
+            // Set image URLs to DTO
+            productCreateDTO.setImageUrls(imageUrls);
+            if (!imageUrls.isEmpty()) {
+    
+            }
+            
             ProductDTO createdProduct = productService.createProduct(productCreateDTO);
             return new ResponseEntity<>(createdProduct, HttpStatus.CREATED);
-        } catch (RuntimeException e) {
+            
+        } catch (Exception e) {
             log.error("Error creating product: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                 "status", "error",
@@ -151,12 +204,70 @@ public class ProductController {
         }
     }
     
-    // Update product
+    // Update product with optional new images
     @PutMapping("/{productId}")
     public ResponseEntity<?> updateProduct(
             @PathVariable Integer productId,
-            @Valid @RequestBody ProductUpdateDTO productUpdateDTO) {
+            @RequestParam("productData") String productDataJson,
+            @RequestParam(value = "images", required = false) MultipartFile[] images) {
+        
         log.info("PUT request to update product with ID: {}", productId);
+        
+        try {
+            // Parse JSON data
+            ObjectMapper objectMapper = new ObjectMapper();
+            ProductUpdateDTO productUpdateDTO = objectMapper.readValue(productDataJson, ProductUpdateDTO.class);
+            
+            // If new images are provided, upload them
+            if (images != null && images.length > 0) {
+                List<String> newImageUrls = new ArrayList<>();
+                
+                for (MultipartFile image : images) {
+                    Map<String, String> uploadResult = imageUploadService.uploadAndCompressImage(
+                        image, 
+                        ImageUploadService.ImageType.PRODUCT, 
+                        null
+                    );
+                    
+                    if ("success".equals(uploadResult.get("status"))) {
+                        newImageUrls.add(uploadResult.get("imageUrl"));
+                    } else {
+                        // If any image fails, delete already uploaded images
+                        for (String uploadedUrl : newImageUrls) {
+                            imageUploadService.deleteImage(uploadedUrl);
+                        }
+                        return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Gagal mengupload gambar: " + uploadResult.get("message")
+                        ));
+                    }
+                }
+                
+                // Set new image URLs
+                productUpdateDTO.setImageUrls(newImageUrls);
+                if (!newImageUrls.isEmpty()) {
+        
+                }
+            }
+            
+            ProductDTO updatedProduct = productService.updateProduct(productId, productUpdateDTO);
+            return ResponseEntity.ok(updatedProduct);
+            
+        } catch (Exception e) {
+            log.error("Error updating product: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", e.getMessage()
+            ));
+        }
+    }
+    
+    // Update product (JSON only - for backward compatibility)
+    @PutMapping("/{productId}/json")
+    public ResponseEntity<?> updateProductJson(
+            @PathVariable Integer productId,
+            @Valid @RequestBody ProductUpdateDTO productUpdateDTO) {
+        log.info("PUT request to update product with ID: {} (JSON only)", productId);
         
         try {
             ProductDTO updatedProduct = productService.updateProduct(productId, productUpdateDTO);

@@ -20,6 +20,7 @@ public class OrderService {
     private final AddressRepository addressRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
     private final UserService userService;
 
     public Map<String, String> placeOrder(OrderCreateDTO dto) {
@@ -31,10 +32,17 @@ public class OrderService {
                 .filter(a -> a.getUser().getUserId().equals(userID))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid address for this user"));
 
+        PaymentMethodEntity paymentMethod = paymentMethodRepository.findById(dto.getPaymentMethodId())
+                .filter(PaymentMethodEntity::getIsActive)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or inactive payment method"));
+
         OrderEntity order = new OrderEntity();
         order.setUser(user);
         order.setCreatedAt(LocalDateTime.now());
         order.setAddress(address);
+        order.setPaymentMethod(paymentMethod);
+        order.setPaymentStatus("PAID");
+        order.setOrderStatus("PROCESSING");
 
         List<OrderItemEntity> items = dto.getItems().stream().map(itemDto -> {
             ProductEntity product = productRepository.findById(itemDto.getProductId()).orElseThrow();
@@ -78,6 +86,19 @@ public class OrderService {
                 addr.getKodePos(),
                 addr.getPhoneNumber()
             ));
+            
+            // Set payment method information
+            PaymentMethodDTO paymentMethodDTO = PaymentMethodDTO.builder()
+                    .id(order.getPaymentMethod().getId())
+                    .name(order.getPaymentMethod().getName())
+                    .description(order.getPaymentMethod().getDescription())
+                    .iconUrl(order.getPaymentMethod().getIconUrl())
+                    .isActive(order.getPaymentMethod().getIsActive())
+                    .type(order.getPaymentMethod().getType())
+                    .build();
+            dto.setPaymentMethod(paymentMethodDTO);
+            dto.setPaymentStatus(order.getPaymentStatus());
+            dto.setOrderStatus(order.getOrderStatus());
 
             List<OrderItemResponseDTO> itemDTOs = order.getItems().stream().map(item -> {
                 OrderItemResponseDTO itemDto = new OrderItemResponseDTO();

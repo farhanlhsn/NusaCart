@@ -1,5 +1,7 @@
 package com.TryCatch.NusaCart.dto;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,7 +24,7 @@ public class ProductUpdateDTO {
     @Min(value = 0, message = "Stok produk tidak boleh negatif")
     private Integer stock;
     
-    private String imageUrl;
+    private List<String> imageUrls;
     
     private Integer idCategory;
     

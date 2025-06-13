@@ -30,4 +30,14 @@ public class OrderEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "address_id", nullable = false)
     private AddressEntity address;
+    
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "payment_method_id", nullable = false)
+    private PaymentMethodEntity paymentMethod;
+    
+    @Column(name = "payment_status", nullable = false, length = 50)
+    private String paymentStatus = "PAID"; // PENDING, PAID, FAILED, CANCELLED
+    
+    @Column(name = "order_status", nullable = false, length = 50)
+    private String orderStatus = "PROCESSING"; // PROCESSING, SHIPPED, DELIVERED, CANCELLED
 }
