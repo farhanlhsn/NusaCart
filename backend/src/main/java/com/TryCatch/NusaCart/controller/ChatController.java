@@ -32,7 +32,7 @@ public class ChatController {
     @PostMapping("/report")
     public ResponseEntity<?> reportChat(@RequestBody ReportChatDTO dto, Authentication authentication) {
         UserEntity currentUser = (UserEntity) authentication.getPrincipal();
-        dto.setReporterId(currentUser.getUserId()); 
+        dto.setReporterId(currentUser.getUserId());
         chatService.reportChat(dto, currentUser.getUserId());
         return ResponseEntity.ok("Reported successfully");
     }
