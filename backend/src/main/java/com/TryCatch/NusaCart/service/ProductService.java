@@ -20,6 +20,7 @@ import com.TryCatch.NusaCart.entity.CategoryEntity;
 import com.TryCatch.NusaCart.entity.ProductEntity;
 import com.TryCatch.NusaCart.entity.TokoEntity;
 import com.TryCatch.NusaCart.entity.UserEntity;
+import com.TryCatch.NusaCart.enums.GeneralCategory;
 import com.TryCatch.NusaCart.repository.CategoryRepository;
 import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.TokoRepository;
@@ -97,17 +98,17 @@ public class ProductService {
     
     // Get paginated products with filters using database-level filtering
     public Map<String, Object> getPaginatedProductsWithFilters(int page, int size, Integer categoryId, Integer tokoId, 
-            Double minPrice, Double maxPrice, Integer minStock, String productName, String sortBy, String sortDirection, Boolean activeOnly) {
+            Double minPrice, Double maxPrice, Integer minStock, String productName, GeneralCategory generalCategory, String sortBy, String sortDirection, Boolean activeOnly) {
         
-        log.info("Getting paginated products with filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
-                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
+        log.info("Getting paginated products with filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, generalCategory: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
+                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
         
         // Create Pageable with sorting
         Pageable pageable = createPageableWithSort(page, size, sortBy, sortDirection);
         
         // Get filtered products from database
         Page<ProductEntity> productPage = productRepository.findProductsWithFilters(
-                categoryId, tokoId, minPrice, maxPrice, minStock, productName, activeOnly, pageable);
+                categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, activeOnly, pageable);
         
         // Convert to DTOs
         List<ProductDTO> productDTOs = productPage.getContent().stream()
@@ -306,9 +307,9 @@ public class ProductService {
                 .price(productCreateDTO.getPrice())
                 .stock(productCreateDTO.getStock())
                 .toko(toko)
-
                 .imageUrls(productCreateDTO.getImageUrls())
                 .category(category)
+                .generalCategory(productCreateDTO.getGeneralCategory())
                 .isActive(productCreateDTO.getIsActive())
                 .build();
         
@@ -367,6 +368,10 @@ public class ProductService {
             CategoryEntity category = categoryRepository.findByIdCategory(productUpdateDTO.getIdCategory())
                     .orElseThrow(() -> new EntityNotFoundException("Kategori tidak ditemukan dengan ID: " + productUpdateDTO.getIdCategory()));
             existingProduct.setCategory(category);
+        }
+        
+        if (productUpdateDTO.getGeneralCategory() != null) {
+            existingProduct.setGeneralCategory(productUpdateDTO.getGeneralCategory());
         }
         
         if (productUpdateDTO.getIsActive() != null) {

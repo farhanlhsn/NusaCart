@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,10 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.TryCatch.NusaCart.dto.ProductCreateDTO;
 import com.TryCatch.NusaCart.dto.ProductDTO;
 import com.TryCatch.NusaCart.dto.ProductUpdateDTO;
+import com.TryCatch.NusaCart.enums.GeneralCategory;
 import com.TryCatch.NusaCart.service.ImageUploadService;
 import com.TryCatch.NusaCart.service.ProductService;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,12 +58,13 @@ public class ProductController {
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) Integer minStock,
             @RequestParam(required = false) String productName,
+            @RequestParam(required = false) GeneralCategory generalCategory,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection,
             @RequestParam(defaultValue = "true") Boolean activeOnly) {
         
-        log.info("GET request to fetch products with pagination and filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
-                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
+        log.info("GET request to fetch products with pagination and filters - page: {}, size: {}, categoryId: {}, tokoId: {}, minPrice: {}, maxPrice: {}, minStock: {}, productName: {}, generalCategory: {}, sortBy: {}, sortDirection: {}, activeOnly: {}", 
+                page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
         
         // Validate pagination parameters
         if (page < 0) {
@@ -94,7 +98,7 @@ public class ProductController {
         }
         
         Map<String, Object> response = productService.getPaginatedProductsWithFilters(
-            page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, sortBy, sortDirection, activeOnly);
+            page, size, categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, sortBy, sortDirection, activeOnly);
         return ResponseEntity.ok(response);
     }
     
