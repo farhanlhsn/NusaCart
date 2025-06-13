@@ -13,6 +13,8 @@ public class OrderCreateDTO {
 
     private List<OrderItemDTO> items;
 
-    private Integer addressId; // 🔑 ID of existing address for the order
+    private Integer addressId;
+    
+    private Integer paymentMethodId;
 
 }

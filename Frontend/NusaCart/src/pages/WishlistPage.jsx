@@ -1,98 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, Eye, Trash2, Filter, Grid3X3, List, Star, Search, ChevronDown, Share2, Check, X, ChevronsUpDown } from "lucide-react";
+import useWishlistStore from "../stores/wishlistStore";
 
 export default function WishlistPage() {
     const navigate = useNavigate();
-    const [viewMode, setViewMode] = useState('grid');
-    const [selectedItems, setSelectedItems] = useState([]);
-    const [filterCategory, setFilterCategory] = useState('all');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState('newest');
-    const [showFilters, setShowFilters] = useState(false);
-    const [notification, setNotification] = useState(null);
-
-    // Dummy data for wishlist items
-    const wishlistItems = [
-        {
-            id: 1,
-            name: "HAVIT HV-G92 Gamepad",
-            image: "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=400&h=400&fit=crop",
-            originalPrice: 160,
-            currentPrice: 120,
-            discount: 40,
-            rating: 4.8,
-            reviewCount: 88,
-            category: "Gaming",
-            inStock: true,
-            addedDate: "2024-01-15"
-        },
-        {
-            id: 2,
-            name: "AK-900 Wired Keyboard",
-            image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=400&fit=crop",
-            originalPrice: 1160,
-            currentPrice: 960,
-            discount: 35,
-            rating: 4.7,
-            reviewCount: 75,
-            category: "Electronics",
-            inStock: true,
-            addedDate: "2024-01-12"
-        },
-        {
-            id: 3,
-            name: "IPS LCD Gaming Monitor",
-            image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=400&fit=crop",
-            originalPrice: 400,
-            currentPrice: 370,
-            discount: 30,
-            rating: 4.9,
-            reviewCount: 99,
-            category: "Electronics",
-            inStock: true,
-            addedDate: "2024-01-10"
-        },
-        {
-            id: 4,
-            name: "S-Series Comfort Chair",
-            image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=400&fit=crop",
-            originalPrice: 400,
-            currentPrice: 375,
-            discount: 25,
-            rating: 4.6,
-            reviewCount: 65,
-            category: "Furniture",
-            inStock: false,
-            addedDate: "2024-01-08"
-        },
-        {
-            id: 5,
-            name: "Telkom University Landmark Tower",
-            image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=400&fit=crop",
-            originalPrice: 20000000,
-            currentPrice: 13000000,
-            discount: 40,
-            rating: 4.8,
-            reviewCount: 88,
-            category: "Real Estate",
-            inStock: true,
-            addedDate: "2024-01-05"
-        },
-        {
-            id: 6,
-            name: "Premium Headphones",
-            image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
-            originalPrice: 300,
-            currentPrice: 250,
-            discount: 17,
-            rating: 4.7,
-            reviewCount: 124,
-            category: "Electronics",
-            inStock: true,
-            addedDate: "2024-01-03"
-        }
-    ];
+    const {
+        wishlistItems,
+        filterCategory,
+        searchQuery,
+        sortBy,
+        selectedItems,
+        viewMode,
+        showFilters,
+        notification,
+        setWishlistItems,
+        addToWishlist,
+        removeFromWishlist,
+        setFilterCategory,
+        setSearchQuery,
+        setSortBy,
+        setSelectedItems,
+        setViewMode,
+        setShowFilters,
+        setNotification,
+        clearNotification
+    } = useWishlistStore();
 
     const categories = ['all', 'Gaming', 'Electronics', 'Furniture', 'Real Estate'];
     const sortOptions = [

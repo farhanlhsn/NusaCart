@@ -1,8 +1,10 @@
 package com.TryCatch.NusaCart.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -44,8 +46,9 @@ public class ProductEntity {
     @JoinColumn(name = "id_toko", nullable = false)
     private TokoEntity toko;
     
-    @Column
-    private String imageUrl;
+    @ElementCollection
+    @Column(name = "image_url")
+    private List<String> imageUrls;
     
     @ManyToOne
     @JoinColumn(name = "id_category")

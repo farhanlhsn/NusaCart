@@ -15,6 +15,9 @@ import ChatPage from "./ChatPage";
 import FAQ from "./FAQ";
 import Terms from "./Terms";
 import Privacy from "./Privacy";
+import SellerDashboard from "./SellerDashboard";
+import SearchPage from './SearchPage';
+import ProductsPage from './ProductsPage';
 
 export const router = createBrowserRouter([
   {
@@ -85,6 +88,18 @@ export const router = createBrowserRouter([
       {
         path: "/privacy",
         element: <Privacy />,
+      },
+      {
+        path: "/seller",
+        element: <SellerDashboard />,
+      },
+      {
+        path: "/search",
+        element: <SearchPage />,
+      },
+      {
+        path: "/products",
+        element: <ProductsPage />,
       },
     ],
   },

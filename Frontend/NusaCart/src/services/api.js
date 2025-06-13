@@ -19,11 +19,23 @@ api.interceptors.request.use(
   }
 );
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
 // Response interceptor - Update untuk handle cookie-based refresh
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
     
@@ -35,26 +47,28 @@ api.interceptors.response.use(
     console.log('[Response Interceptor] Error status:', error.response?.status);
     console.log('[Response Interceptor] Original request URL:', originalRequest.url);
 
-    // Untuk 401 errors, coba refresh token via cookies
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+        .then(() => api(originalRequest))
+        .catch(err => Promise.reject(err));
+      }
+
       originalRequest._retry = true;
-      console.log('[Response Interceptor] Attempting token refresh via cookies...');
+      isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post('http://localhost:6060/api/auth/refresh', {}, {
-          withCredentials: true  // Gunakan cookies untuk refresh
-        });
-
-        console.log('[Response Interceptor] Refresh successful via cookies');
-        
-        // Retry original request dengan cookies yang sudah diupdate
-        console.log('[Response Interceptor] Retrying original request...');
+        await axios.post('http://localhost:6060/api/auth/refresh', {}, { withCredentials: true });
+        processQueue(null);
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('[Response Interceptor] Failed to refresh token:', refreshError.response?.data || refreshError.message);
-        // Redirect ke login jika refresh gagal
+        processQueue(refreshError);
         window.location.href = '/login';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);

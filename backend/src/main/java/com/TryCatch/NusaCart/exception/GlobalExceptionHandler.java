@@ -131,13 +131,13 @@ public class GlobalExceptionHandler {
     }
 
     // Handle all other exceptions
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGlobalException(Exception ex) {
-        log.error("Unhandled exception: {}", ex.getMessage(), ex);
-        Map<String, String> response = new HashMap<>();
-        response.put("status", "error");
-        response.put("message", "Terjadi kesalahan pada server");
-        response.put("error_code", "INTERNAL_SERVER_ERROR");
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    // @ExceptionHandler(Exception.class)
+    // public ResponseEntity<Map<String, String>> handleGlobalException(Exception ex) {
+    //     log.error("Unhandled exception: {}", ex.getMessage(), ex);
+    //     Map<String, String> response = new HashMap<>();
+    //     response.put("status", "error");
+    //     response.put("message", "Terjadi kesalahan pada server");
+    //     response.put("error_code", "INTERNAL_SERVER_ERROR");
+    //     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    // }
 }

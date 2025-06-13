@@ -17,6 +17,7 @@ export default function Navbar() {
   const { user } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   // Handle scroll effect
   useEffect(() => {
@@ -53,14 +54,26 @@ export default function Navbar() {
 
           {/* Tengah: Search */}
           <div className="search-container">
-            <div className="search-box">
+            <form
+              className="search-box"
+              onSubmit={e => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                }
+              }}
+            >
               <input
                 type="text"
-                placeholder="Apa yang Anda cari?"
+                placeholder="Cari produk atau toko..."
                 className="search-input"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
-              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
-            </div>
+              <button type="submit" className="search-icon-button" tabIndex={-1}>
+                <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+              </button>
+            </form>
           </div>
 
           {/* Kanan: Icon */}
@@ -102,14 +115,27 @@ export default function Navbar() {
         <div className="mobile-menu">
           <div className="mobile-menu-content">
             {/* Search Bar */}
-            <div className="mobile-search-box">
+            <form
+              className="mobile-search-box"
+              onSubmit={e => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+                  setIsMenuOpen(false);
+                }
+              }}
+            >
               <input
                 type="text"
-                placeholder="Apa yang Anda cari?"
+                placeholder="Cari produk atau toko..."
                 className="mobile-search-input"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
-              <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
-            </div>
+              <button type="submit" className="search-icon-button" tabIndex={-1}>
+                <svg className="search-icon icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" /></svg>
+              </button>
+            </form>
             {/* Menu Items */}
             <div className="mobile-menu-items">
               <a href="#" className="mobile-menu-item">Beranda</a>
