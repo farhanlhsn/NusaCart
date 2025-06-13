@@ -8,4 +8,5 @@ public interface BuyerSellerChatRepository extends JpaRepository<BuyerSellerChat
     List<BuyerSellerChatEntity> findBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
     Integer senderId1, Integer receiverId1,
     Integer senderId2, Integer receiverId2);
+
 }
