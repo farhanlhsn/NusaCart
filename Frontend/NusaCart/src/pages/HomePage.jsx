@@ -31,7 +31,7 @@ export default function HomePage() {
 
     useEffect(() => {
         setShowBanner(true);
-        fetchProducts();
+        fetchProducts(0, 8); // Fetch first 8 products for homepage
     }, [fetchProducts]);
 
     return (
