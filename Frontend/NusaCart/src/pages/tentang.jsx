@@ -9,7 +9,7 @@ export default function tentang() {
     const teamMembers = [
         {
             name: "Athallah Zacky Maulana",
-            position: "Back End Developer",
+            position: "Full Stack Developer",
             image: "https://randomuser.me/api/portraits/men/1.jpg"
         },
         {

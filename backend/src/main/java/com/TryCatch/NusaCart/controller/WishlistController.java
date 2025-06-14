@@ -1,14 +1,17 @@
 package com.TryCatch.NusaCart.controller;
 
+import com.TryCatch.NusaCart.dto.WishlistResponseDTO;
 import com.TryCatch.NusaCart.dto.WishlistDTO;
 import com.TryCatch.NusaCart.dto.WishlistResponseDTO;
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.service.WishlistService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wishlist")
@@ -18,38 +21,93 @@ public class WishlistController {
     private WishlistService wishlistService;
 
     @GetMapping
-    public ResponseEntity<List<WishlistResponseDTO>> getAllWishlists() {
-        return ResponseEntity.ok(wishlistService.getAllWishlists());
+    public ResponseEntity<WishlistResponseDTO> getCurrentUserWishlist() {
+        try {
+            WishlistResponseDTO wishlist = wishlistService.getCurrentUserWishlist();
+            WishlistResponseDTO response = new WishlistResponseDTO(
+                "Berhasil mengambil data wishlist", 
+                wishlist
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            WishlistResponseDTO errorResponse = new WishlistResponseDTO(
+                "error", 
+                "Gagal mengambil data wishlist: " + e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
-    @PostMapping
-    public ResponseEntity<WishlistDTO> createWishlist() {
-        return ResponseEntity.ok(wishlistService.createWishlist());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<WishlistResponseDTO> getWishlistById(@PathVariable Integer id) {
-        return ResponseEntity.ok(wishlistService.getWishlistByUserId(id));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteWishlist(@PathVariable Integer id) {
-        wishlistService.deleteWishlist(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{wishlistId}/add/{productId}")
+    @PostMapping("/{productId}")
     public ResponseEntity<WishlistResponseDTO> addProduct(
-            @PathVariable Integer wishlistId,
             @PathVariable Integer productId) {
-        return ResponseEntity.ok(wishlistService.addProductToWishlist(wishlistId, productId));
+        try {
+            WishlistResponseDTO wishlist = wishlistService.addProductToCurrentUserWishlist(productId);
+            WishlistResponseDTO response = new WishlistResponseDTO(
+                "Produk berhasil ditambahkan ke wishlist", 
+                wishlist
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            String message = e.getMessage();
+            HttpStatus status;
+            
+            if (message.contains("tidak ditemukan")) {
+                status = HttpStatus.NOT_FOUND;
+            } else if (message.contains("sudah ada")) {
+                status = HttpStatus.CONFLICT;
+            } else {
+                status = HttpStatus.BAD_REQUEST;
+            }
+            
+            WishlistResponseDTO errorResponse = new WishlistResponseDTO(
+                "error", 
+                message
+            );
+            return ResponseEntity.status(status).body(errorResponse);
+        } catch (Exception e) {
+            WishlistResponseDTO errorResponse = new WishlistResponseDTO(
+                "error", 
+                "Gagal menambahkan produk ke wishlist: " + e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
-    @PostMapping("/{wishlistId}/remove/{productId}")
+    @DeleteMapping("/{productId}")
     public ResponseEntity<WishlistResponseDTO> removeProduct(
-            @PathVariable Integer wishlistId,
             @PathVariable Integer productId) {
-        return ResponseEntity.ok(wishlistService.removeProductFromWishlist(wishlistId, productId));
+        try {
+            WishlistResponseDTO wishlist = wishlistService.removeProductFromCurrentUserWishlist(productId);
+            WishlistResponseDTO response = new WishlistResponseDTO(
+                "Produk berhasil dihapus dari wishlist", 
+                wishlist
+            );
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            String message = e.getMessage();
+            HttpStatus status;
+            
+            if (message.contains("tidak ditemukan")) {
+                status = HttpStatus.NOT_FOUND;
+            } else if (message.contains("tidak ada di wishlist")) {
+                status = HttpStatus.NOT_FOUND;
+            } else {
+                status = HttpStatus.BAD_REQUEST;
+            }
+            
+            WishlistResponseDTO errorResponse = new WishlistResponseDTO(
+                "error", 
+                message
+            );
+            return ResponseEntity.status(status).body(errorResponse);
+        } catch (Exception e) {
+            WishlistResponseDTO errorResponse = new WishlistResponseDTO(
+                "error", 
+                "Gagal menghapus produk dari wishlist: " + e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 }
 

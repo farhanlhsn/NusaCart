@@ -28,6 +28,8 @@ public class ProductUpdateDTO {
     
     private List<String> imageUrls;
     
+    private List<String> existingImageUrls;
+    
     private Integer idCategory;
     
     private GeneralCategory generalCategory;
