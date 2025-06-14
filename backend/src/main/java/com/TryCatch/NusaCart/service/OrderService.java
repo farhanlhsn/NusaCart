@@ -21,24 +21,24 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final PaymentMethodRepository paymentMethodRepository;
-    private final UserService userService;
     private final DiscountRepository discountRepository;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final UserService userService;
 
-/* 
-    */
     public Map<String, String> placeOrder(OrderCreateDTO dto) {
         Integer userID = userService.getCurrentUser().getUserId();
         UserEntity user = userRepository.findByUserId(userID).orElseThrow();
-    
+
         // 🛡️ Ensure address belongs to this user
         AddressEntity address = addressRepository.findById(dto.getAddressId())
                 .filter(a -> a.getUser().getUserId().equals(userID))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid address for this user"));
-    
+
         PaymentMethodEntity paymentMethod = paymentMethodRepository.findById(dto.getPaymentMethodId())
                 .filter(PaymentMethodEntity::getIsActive)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or inactive payment method"));
-    
+
         OrderEntity order = new OrderEntity();
         order.setUser(user);
         order.setCreatedAt(LocalDateTime.now());
@@ -46,19 +46,17 @@ public class OrderService {
         order.setPaymentMethod(paymentMethod);
         order.setPaymentStatus("PAID");
         order.setOrderStatus("PROCESSING");
-    
+
         List<OrderItemEntity> items = dto.getItems().stream().map(itemDto -> {
             ProductEntity product = productRepository.findById(itemDto.getProductId()).orElseThrow();
-    
-            // ✅ Check stock
+
             if (product.getStock() < itemDto.getQuantity()) {
                 throw new IllegalArgumentException("Not enough stock for product: " + product.getProductName());
             }
-    
-            // 🔻 Decrement stock
+
             product.setStock(product.getStock() - itemDto.getQuantity());
-            productRepository.save(product); // Optional depending on persistence context
-    
+            productRepository.save(product);
+
             OrderItemEntity item = new OrderItemEntity();
             item.setProduct(product);
             item.setQuantity(itemDto.getQuantity());
@@ -66,30 +64,39 @@ public class OrderService {
             item.setOrder(order);
             return item;
         }).collect(Collectors.toList());
+
         order.setItems(items);
+
         double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
-        // Terapkan diskon jika ada promoCode
+
         if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
             DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
                     .filter(DiscountEntity::isValid)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired promo code"));
-            // Terapkan diskon ke total
+
             double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
             total -= discountAmount;
-            // Tandai promo sebagai telah digunakan (misal kurangi usageLimit)
+
             discount.setUsageLimit(discount.getUsageLimit() - 1);
             discountRepository.save(discount);
-            // Simpan info discount ke OrderEntity
+
             order.setDiscount(discount);
         }
-        order.setTotal(items.stream().mapToDouble(OrderItemEntity::getPrice).sum());
+
+        order.setTotal(total);
         orderRepository.save(order);
+        CartEntity userCart = cartRepository.findByUser(user).orElse(null);
+        if (userCart != null) {
+        for (OrderItemEntity item : items) {
+            cartItemRepository.deleteByCartAndProduct(userCart, item.getProduct());
+        }
+    }
+
+
         Map<String, String> response = new HashMap<>();
         response.put("message", "Order placed successfully");
         return response;
     }
-
-
 
     public List<OrderResponseDTO> getOrders() {
         Integer userID = userService.getCurrentUser().getUserId();
@@ -103,16 +110,15 @@ public class OrderService {
 
             AddressEntity addr = order.getAddress();
             dto.setAddress(String.format("%s, %s, %s, %s, %s, %s (%s)",
-                addr.getJalan(),
-                addr.getKelurahan(),
-                addr.getKecamatan(),
-                addr.getKotaKabupaten(),
-                addr.getProvinsi(),
-                addr.getKodePos(),
-                addr.getPhoneNumber()
+                    addr.getJalan(),
+                    addr.getKelurahan(),
+                    addr.getKecamatan(),
+                    addr.getKotaKabupaten(),
+                    addr.getProvinsi(),
+                    addr.getKodePos(),
+                    addr.getPhoneNumber()
             ));
-            
-            // Set payment method information
+
             PaymentMethodDTO paymentMethodDTO = PaymentMethodDTO.builder()
                     .id(order.getPaymentMethod().getId())
                     .name(order.getPaymentMethod().getName())
