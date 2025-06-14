@@ -195,7 +195,7 @@ const SellerDashboard = () => {
   // const currentProducts = products.slice(startIndex, endIndex);
 
   // Modal Product Form - Wrapped with React.memo to prevent unnecessary re-renders
-  const ProductModal = React.memo(({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
+  const ProductModal = ({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
     const [form, setForm] = React.useState(product || {
       productName: '',
       description: '',
@@ -204,120 +204,102 @@ const SellerDashboard = () => {
       idCategory: '',
       imageUrl: '',
       isActive: true,
-      generalCategory: 'LAINNYA'
+      generalCategory: 'LAINNYA',
+      imageUrls: []
     });
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
     const [selectedImages, setSelectedImages] = React.useState([]);
-    const [modalCategories, setModalCategories] = React.useState([]);
-    
-    const formRef = React.useRef(form);
-    const selectedImagesRef = React.useRef(selectedImages);
-    const isRestoringRef = React.useRef(false);
-    
-    React.useEffect(() => {
-      if (!isRestoringRef.current) {
-        formRef.current = form;
-        if (show) {
-          localStorage.setItem('productFormBackup', JSON.stringify(form));
-        }
-      }
-    }, [form, show]);
-    
-    React.useEffect(() => {
-      if (!isRestoringRef.current) {
-        selectedImagesRef.current = selectedImages;
-      }
-    }, [selectedImages]);
 
     React.useEffect(() => {
-      if (show) {
-        const currentCategories = Array.isArray(categories) ? categories : [];
-        setModalCategories([...currentCategories]);
-        
-        const backup = localStorage.getItem('productFormBackup');
-        if (backup && !product) {
-          try {
-            const backupForm = JSON.parse(backup);
-            isRestoringRef.current = true;
-            setForm(backupForm);
-            setTimeout(() => { isRestoringRef.current = false; }, 100);
-          } catch (e) {
-            console.log('Failed to restore from backup:', e);
-          }
-        }
-      } else {
-        localStorage.removeItem('productFormBackup');
-      }
-    }, [show]);
-
-    React.useEffect(() => {
-      if (product && show) {
-        isRestoringRef.current = true;
-        setForm(product);
-        setTimeout(() => { isRestoringRef.current = false; }, 100);
-      } else if (!product && show) {
-        // Reset form for new product
+      if (product) {
         setForm({
-          productName: '', description: '', price: 0, stock: 0, idCategory: '',
-          imageUrl: '', isActive: true, generalCategory: 'LAINNYA'
+          ...product,
+          imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : [])
         });
+      } else {
+        setForm({
+          productName: '',
+          description: '',
+          price: 0,
+          stock: 0,
+          idCategory: '',
+          imageUrl: '',
+          isActive: true,
+          generalCategory: 'LAINNYA',
+          imageUrls: []
+        });
+        setSelectedImages([]);
       }
-    }, [product, show]);
+    }, [product]);
     
     React.useEffect(() => {
-      if (show && Array.isArray(categories)) {
-        setModalCategories([...categories]);
+      if (newCategoryId) {
+        setForm(f => ({ ...f, idCategory: newCategoryId }));
       }
-    }, [categories, show]);
-    
-    React.useEffect(() => {
-      if (newCategoryId && Array.isArray(categories) && categories.length > 0) {
-        const updatedCategories = [...categories];
-        setModalCategories(updatedCategories);
-      }
-    }, [newCategoryId, categories]);
-    
-    const handleOpenCategoryModal = React.useCallback(() => {
-      localStorage.setItem('productFormBeforeCategory', JSON.stringify({
-        form: formRef.current,
-        selectedImages: selectedImagesRef.current.length
-      }));
-      setShowCategoryModal(true);
-    }, []);
-    
-    React.useEffect(() => {
-      if (!showCategoryModal && show) {
-        setTimeout(() => {
-          const backup = localStorage.getItem('productFormBeforeCategory');
-          if (backup) {
-            try {
-              const { form: backupForm } = JSON.parse(backup);
-              const currentFormEmpty = !form.productName && !form.description && form.price === 0;
-              const backupFormHasData = backupForm.productName || backupForm.description || backupForm.price > 0;
-              
-              if (currentFormEmpty && backupFormHasData) {
-                isRestoringRef.current = true;
-                setForm(backupForm);
-                setTimeout(() => { isRestoringRef.current = false; }, 100);
-              }
-              localStorage.removeItem('productFormBeforeCategory');
-            } catch (e) {
-              console.log('Failed to restore from category backup:', e);
-            }
-          }
-        }, 100);
-      }
-    }, [showCategoryModal, show]);
+    }, [newCategoryId]);
+
 
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
-      setForm(prevForm => ({ ...prevForm, [name]: type === 'checkbox' ? checked : value }));
+      setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+    };
+    
+    const handleImage = (url) => {
+      setForm({ ...form, imageUrl: url });
     };
     
     const handleFileChange = (e) => {
       const files = Array.from(e.target.files);
+      const existingImagesCount = product && form.imageUrls ? form.imageUrls.length : 0;
+      const totalImages = existingImagesCount + files.length;
+      
+      if (totalImages > 5) {
+        setErr(`Maksimal 5 gambar total. Anda sudah memiliki ${existingImagesCount} gambar, hanya bisa menambah ${5 - existingImagesCount} gambar lagi.`);
+        return;
+      }
+      
+      // Validasi ukuran file
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const invalidFiles = files.filter(file => file.size > maxSize);
+      if (invalidFiles.length > 0) {
+        setErr('Beberapa file melebihi ukuran maksimal 5MB');
+        return;
+      }
+      
       setSelectedImages(files);
+      setErr('');
+    };
+    
+    const handleDragOver = (e) => {
+      e.preventDefault();
+    };
+    
+    const handleDrop = (e) => {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      const existingImagesCount = product && form.imageUrls ? form.imageUrls.length : 0;
+      const totalImages = existingImagesCount + files.length;
+      
+      if (totalImages > 5) {
+        setErr(`Maksimal 5 gambar total. Anda sudah memiliki ${existingImagesCount} gambar, hanya bisa menambah ${5 - existingImagesCount} gambar lagi.`);
+        return;
+      }
+      
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const invalidFiles = files.filter(file => file.size > maxSize);
+      if (invalidFiles.length > 0) {
+        setErr('Beberapa file melebihi ukuran maksimal 5MB');
+        return;
+      }
+      
+      setSelectedImages(files);
+      setErr('');
+    };
+    
+    const removeImage = (index) => {
+      const newImages = selectedImages.filter((_, i) => i !== index);
+      setSelectedImages(newImages);
     };
     
     const handleSubmit = async (e) => {
@@ -325,12 +307,11 @@ const SellerDashboard = () => {
       setSaving(true);
       setErr('');
       try {
-        localStorage.removeItem('productFormBackup');
-        localStorage.removeItem('productFormBeforeCategory');
-        
+        // Selalu gunakan FormData
         const formData = new FormData();
         
         if (product && product.productId) {
+          // UPDATE produk - field sesuai ProductUpdateDTO (TANPA idToko)
           const productDataJson = {
             productName: form.productName,
             description: form.description,
@@ -338,16 +319,16 @@ const SellerDashboard = () => {
             stock: Number(form.stock),
             idCategory: form.idCategory ? Number(form.idCategory) : undefined,
             isActive: form.isActive,
-            generalCategory: form.generalCategory
+            generalCategory: form.generalCategory,
+            existingImageUrls: form.imageUrls || [] // Kirim gambar yang sudah ada
           };
           formData.append('productData', JSON.stringify(productDataJson));
           if (selectedImages.length > 0) {
             selectedImages.forEach(img => formData.append('images', img));
           }
-          await api.put(`/api/products/${product.productId}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          await api.put(`/api/products/${product.productId}`, formData);
         } else {
+          // CREATE produk - field sesuai ProductCreateDTO (DENGAN idToko)
           if (selectedImages.length === 0) {
             throw new Error('Gambar produk wajib diisi untuk produk baru');
           }
@@ -363,122 +344,255 @@ const SellerDashboard = () => {
           };
           formData.append('productData', JSON.stringify(productDataJson));
           selectedImages.forEach(img => formData.append('images', img));
-          await api.post('/api/products', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          await api.post('/api/products', formData);
         }
+        
+        // Reset state setelah submit berhasil
+        setSelectedImages([]);
+        setForm({
+          productName: '',
+          description: '',
+          price: 0,
+          stock: 0,
+          idCategory: '',
+          imageUrl: '',
+          isActive: true,
+          generalCategory: 'LAINNYA',
+          imageUrls: []
+        });
         
         onSave();
         if (onCategoryAdded) {
           onCategoryAdded(form);
         }
       } catch (error) {
-        setErr(error.response?.data?.message || error.message || 'Gagal menyimpan produk');
+        console.error('Upload error:', error);
+        let errorMessage = 'Gagal menyimpan produk';
+        
+        if (error.code === 'ECONNABORTED') {
+          errorMessage = 'Upload timeout. Coba dengan gambar yang lebih kecil atau koneksi yang lebih stabil.';
+        } else if (error.response?.status === 413) {
+          errorMessage = 'File terlalu besar. Maksimal ukuran file adalah 10MB per gambar.';
+        } else if (error.response?.status === 400) {
+          errorMessage = error.response?.data?.message || 'Data tidak valid. Periksa kembali form Anda.';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        setErr(errorMessage);
       } finally {
         setSaving(false);
       }
     };
-    
     if (!show) return null;
-    
     return (
-      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
+      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-4xl max-h-[90vh] overflow-y-auto transition-all">
           <h2 className="text-2xl font-bold mb-6 text-center text-red-500">{product ? 'Edit Produk' : 'Tambah Produk'}</h2>
-          {err && <div className="text-red-500 mb-4 text-center">{err}</div>}
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Nama Produk</label>
-            <input name="productName" value={form.productName || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Deskripsi</label>
-            <textarea name="description" value={form.description || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" rows={2} />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Harga</label>
-            <input name="price" type="number" value={form.price || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Stok</label>
-            <input name="stock" type="number" value={form.stock || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
-          </div>
-          <div className="mb-4 flex items-center gap-2">
-            <select name="idCategory" value={form.idCategory || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition">
-              <option value="">Pilih Kategori</option>
-              {Array.isArray(modalCategories) && modalCategories.map(cat => (
-                <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
-              ))}
-            </select>
-            <button type="button" onClick={handleOpenCategoryModal} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition shrink-0">Tambah</button>
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Kategori Umum *</label>
-            <select name="generalCategory" value={form.generalCategory || 'LAINNYA'} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required>
-              <option value="ELEKTRONIK">Elektronik</option>
-              <option value="FURNITUR">Furnitur</option>
-              <option value="PAKAIAN">Pakaian</option>
-              <option value="MAKANAN_MINUMAN">Makanan & Minuman</option>
-              <option value="KESEHATAN_KECANTIKAN">Kesehatan & Kecantikan</option>
-              <option value="OLAHRAGA_OUTDOOR">Olahraga & Outdoor</option>
-              <option value="OTOMOTIF">Otomotif</option>
-              <option value="BUKU_ALAT_TULIS">Buku & Alat Tulis</option>
-              <option value="MAINAN_HOBI">Mainan & Hobi</option>
-              <option value="RUMAH_TANGGA">Rumah Tangga</option>
-              <option value="PERHIASAN_AKSESORIS">Perhiasan & Aksesoris</option>
-              <option value="LAINNYA">Lainnya</option>
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2 font-medium">Gambar Produk {!product && '*'}</label>
-            <input 
-              type="file" multiple accept="image/*" onChange={handleFileChange}
-              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition"
-            />
-            {form.imageUrl && (
-              <img 
-                src={form.imageUrl.startsWith('http') ? form.imageUrl : `http://localhost:6060${form.imageUrl}`} 
-                alt="Current" className="w-24 h-24 mt-2 object-cover rounded border" 
-              />
-            )}
-            {selectedImages.length > 0 && (
-              <div className="mt-2 text-sm text-green-600">
-                {selectedImages.length} gambar dipilih
+          {err && <div className="text-red-500 mb-4 text-center p-3 bg-red-50 rounded-lg border border-red-200">{err}</div>}
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Basic Info */}
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-2 font-medium text-gray-700">Nama Produk</label>
+                <input name="productName" value={form.productName} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required />
               </div>
-            )}
+              
+              <div>
+                <label className="block mb-2 font-medium text-gray-700">Deskripsi</label>
+                <textarea name="description" value={form.description} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" rows={4} placeholder="Deskripsikan produk Anda..." />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 font-medium text-gray-700">Harga</label>
+                  <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required min={0} placeholder="0" />
+                </div>
+                <div>
+                  <label className="block mb-2 font-medium text-gray-700">Stok</label>
+                  <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required min={0} placeholder="0" />
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="font-medium text-gray-700">Kategori</label>
+                  <button type="button" onClick={() => setShowCategoryModal(true)} className="px-3 py-1 bg-red-500 text-white rounded-md text-xs hover:bg-red-600 transition">
+                    + Tambah
+                  </button>
+                </div>
+                <select name="idCategory" value={form.idCategory} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition">
+                  <option value="">Pilih Kategori</option>
+                  {categories.map(cat => (
+                    <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block mb-2 font-medium text-gray-700">Kategori Umum *</label>
+                <select name="generalCategory" value={form.generalCategory} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required>
+                  <option value="ELEKTRONIK">Elektronik</option>
+                  <option value="FURNITUR">Furnitur</option>
+                  <option value="PAKAIAN">Pakaian</option>
+                  <option value="MAKANAN_MINUMAN">Makanan & Minuman</option>
+                  <option value="KESEHATAN_KECANTIKAN">Kesehatan & Kecantikan</option>
+                  <option value="OLAHRAGA_OUTDOOR">Olahraga & Outdoor</option>
+                  <option value="OTOMOTIF">Otomotif</option>
+                  <option value="BUKU_ALAT_TULIS">Buku & Alat Tulis</option>
+                  <option value="MAINAN_HOBI">Mainan & Hobi</option>
+                  <option value="RUMAH_TANGGA">Rumah Tangga</option>
+                  <option value="PERHIASAN_AKSESORIS">Perhiasan & Aksesoris</option>
+                  <option value="LAINNYA">Lainnya</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="isActiveMain" className="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded" />
+                <label htmlFor="isActiveMain" className="font-medium text-gray-700">Aktifkan Produk</label>
+              </div>
+            </div>
+            
+            {/* Right Column - Images */}
+            <div>
+              <label className="block mb-3 font-medium text-gray-700">Gambar Produk {!product && '*'}</label>
+              <div className="text-xs text-gray-500 mb-4 p-2 bg-blue-50 rounded border border-blue-200">
+                📸 Maksimal 5 gambar (JPG, PNG, JPEG) • Ukuran maksimal 5MB per gambar
+              </div>
+              
+              {/* Show existing images for edit mode */}
+              {product && form.imageUrls && form.imageUrls.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-sm font-medium mb-3 text-gray-700">Gambar saat ini ({form.imageUrls.length}/5):</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {form.imageUrls.map((imageUrl, index) => (
+                      <div key={index} className="relative group">
+                        <div className="w-full h-24 bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-200">
+                          <img 
+                            src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:6060${imageUrl}`} 
+                            alt={`Existing ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newImageUrls = form.imageUrls.filter((_, i) => i !== index);
+                            setForm({ ...form, imageUrls: newImageUrls });
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                          title="Hapus gambar"
+                        >
+                          ×
+                        </button>
+                        <div className="text-xs text-center mt-1 text-gray-600">Foto {index + 1}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Upload Area */}
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 hover:bg-red-50 transition-all duration-200"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+              >
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*" 
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="file-upload"
+                  max="5"
+                />
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <div className="flex flex-col items-center">
+                    <svg className="w-16 h-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-base font-medium text-gray-700 mb-1">Klik untuk upload atau drag & drop</p>
+                    <p className="text-sm text-gray-500">PNG, JPG, JPEG hingga 5MB per file</p>
+                    <p className="text-xs text-gray-400 mt-1">Maksimal 5 gambar total (termasuk gambar yang sudah ada)</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Preview New Images */}
+              {selectedImages.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-sm font-medium mb-3 text-gray-700">Gambar baru yang dipilih ({selectedImages.length}/5):</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {selectedImages.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <div className="w-full h-24 bg-gray-100 rounded-lg overflow-hidden border-2 border-green-200">
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                          title="Hapus gambar"
+                        >
+                          ×
+                        </button>
+                        <div className="text-xs text-center mt-1 truncate px-1 text-gray-600">{file.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Show remaining slots */}
+              {(product ? (form.imageUrls?.length || 0) + selectedImages.length : selectedImages.length) < 5 && (
+                <div className="mt-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {Array.from({ length: 5 - ((product ? (form.imageUrls?.length || 0) : 0) + selectedImages.length) }).map((_, index) => (
+                      <div key={`empty-slot-${index}`} className="w-full h-24 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">Foto {((product ? (form.imageUrls?.length || 0) : 0) + selectedImages.length) + index + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="mb-4 flex items-center gap-2">
-            <input type="checkbox" name="isActive" checked={form.isActive || false} onChange={handleChange} id="isActive" />
-            <label htmlFor="isActive">Aktifkan Produk</label>
-          </div>
-          <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
-            <button type="submit" disabled={saving} className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+          
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+              Batal
+            </button>
+            <button type="submit" disabled={saving} className="px-8 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+              {saving ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Menyimpan...
+                </div>
+              ) : 'Simpan'}
+            </button>
           </div>
         </form>
       </div>
     );
-  }, (prevProps, nextProps) => {
-    return (
-      prevProps.show === nextProps.show &&
-      prevProps.product === nextProps.product &&
-      prevProps.tokoId === nextProps.tokoId &&
-      prevProps.newCategoryId === nextProps.newCategoryId
-    );
-  });
+  };
 
   // Modal Store Form
   const StoreModal = ({ show, onClose, onSave, store }) => {
     const [form, setForm] = React.useState(store || { namaToko: '', profilePictureToko: '' });
-    // FIX: Menambahkan state 'saving' yang hilang
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
-
-    React.useEffect(() => {
-        if (store) {
-            setForm(store);
-        }
-    }, [store, show]);
-
     const handleChange = (e) => {
       setForm({ ...form, [e.target.name]: e.target.value });
     };
@@ -521,7 +635,7 @@ const SellerDashboard = () => {
     );
   };
 
-  // FIX: Kesalahan sintaksis pada CategoryModal
+  // Category Modal
   const CategoryModal = ({ show, onClose, onSave }) => {
     const [newCategoryName, setNewCategoryName] = React.useState('');
     const [savingCategory, setSavingCategory] = React.useState(false);
@@ -536,19 +650,16 @@ const SellerDashboard = () => {
           namaCategory: newCategoryName,
           idToko: store.idToko,
         });
+        onSave(res.data.idCategory);
         setNewCategoryName('');
-        onSave(res.data);
-      } catch (err) {
-        setCategoryError(err.response?.data?.message || 'Gagal menambah kategori');
+      } catch (error) {
+        setCategoryError('Gagal menambah kategori');
       } finally {
-        // Logika yang benar untuk blok finally
         setSavingCategory(false);
       }
     };
 
     if (!show) return null;
-    
-    // JSX yang benar dipindahkan ke dalam return statement
     return (
       <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
@@ -557,11 +668,11 @@ const SellerDashboard = () => {
           <div className="mb-4">
             <label className="block mb-2 font-medium">Nama Kategori</label>
             <input 
-              type="text" 
               value={newCategoryName} 
-              onChange={e => setNewCategoryName(e.target.value)} 
+              onChange={(e) => setNewCategoryName(e.target.value)} 
               className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" 
               required 
+              placeholder="Masukkan nama kategori"
             />
           </div>
           <div className="flex justify-end gap-4 mt-6">
@@ -574,6 +685,8 @@ const SellerDashboard = () => {
       </div>
     );
   };
+
+  // Main component return
 
   return (
     <>
