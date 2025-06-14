@@ -40,4 +40,7 @@ public class OrderEntity {
     
     @Column(name = "order_status", nullable = false, length = 50)
     private String orderStatus = "PROCESSING"; // PROCESSING, SHIPPED, DELIVERED, CANCELLED
+
+    @ManyToOne
+    private DiscountEntity discount; // implementasi discount/voucher apalah
 }
