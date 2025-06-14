@@ -5,37 +5,51 @@ import useTrackingStore from '../stores/trackingStore';
 import useAuthStore from '../stores/authStore';
 
 const OrderHistoryPage = () => {
+  const { orders, loading, error, fetchOrders } = useOrderStore();
+  const { getTrackingTimeline, fetchTrackingByOrder, loading: trackingLoading } = useTrackingStore();
   const navigate = useNavigate();
+  
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTracking, setShowTracking] = useState(false);
-
-  const { 
-    orders, 
-    loading, 
-    error, 
-    fetchOrders 
-  } = useOrderStore();
-
-  const { 
-    fetchTrackingByOrder, 
-    getTrackingTimeline, 
-    loading: trackingLoading 
-  } = useTrackingStore();
+  const [showReviewSelection, setShowReviewSelection] = useState(false);
 
   const { user } = useAuthStore();
 
   useEffect(() => {
-    if (user) {
+    if (user?.userId) {
       fetchOrders();
-    } else {
+    } else if (user === null) {
+      // Only navigate to login if user is explicitly null (not loading)
       navigate('/login');
     }
   }, [user, fetchOrders, navigate]);
+
+  // Debug logging untuk melihat struktur data order
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && orders && orders.length > 0) {
+      console.log('OrderHistory - Sample order structure:', orders[0]);
+      console.log('OrderHistory - Sample order items:', orders[0]?.items);
+    }
+  }, [orders]);
 
   const handleViewTracking = async (order) => {
     setSelectedOrder(order);
     setShowTracking(true);
     await fetchTrackingByOrder(order.id);
+  };
+
+  const handleReviewProduct = (item) => {
+    // Check if we have productId, otherwise search by product name
+    if (item.productId) {
+      navigate(`/product/${item.productId}`);
+    } else if (item.productName) {
+      // Fallback: search by product name if no productId
+      navigate(`/search?name=${encodeURIComponent(item.productName)}`);
+    } else {
+      // Last resort: go to products page
+      navigate('/products');
+      alert('Silakan cari produk secara manual untuk menulis ulasan');
+    }
   };
 
   const formatPrice = (price) => {
@@ -214,10 +228,26 @@ const OrderHistoryPage = () => {
                     
                     {order.orderStatus === 'DELIVERED' && (
                       <button
-                        onClick={() => navigate(`/product/${order.items[0]?.productId}`)}
+                        onClick={() => {
+                          if (order.items && order.items.length > 0) {
+                            if (order.items.length === 1) {
+                              // Jika hanya 1 produk, langsung handle review
+                              handleReviewProduct(order.items[0]);
+                            } else {
+                              // Jika multiple products, tampilkan modal untuk pilih produk
+                              setSelectedOrder(order);
+                              setShowReviewSelection(true);
+                            }
+                          } else {
+                            alert('Tidak ada produk dalam order ini');
+                          }
+                        }}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium w-full md:w-auto"
                       >
-                        Tulis Ulasan
+                        {order.items?.length > 1 
+                          ? `Tulis Ulasan (${order.items.length} produk)` 
+                          : 'Tulis Ulasan'
+                        }
                       </button>
                     )}
                   </div>
@@ -257,6 +287,78 @@ const OrderHistoryPage = () => {
               ) : (
                 <OrderTracking orderId={selectedOrder.id} />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Selection Modal */}
+      {showReviewSelection && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Pilih Produk untuk Direview
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowReviewSelection(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-gray-600 mb-4">
+                Order ini memiliki beberapa produk. Pilih produk yang ingin Anda review:
+              </p>
+              
+              <div className="space-y-3">
+                {selectedOrder.items.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      handleReviewProduct(item);
+                      setShowReviewSelection(false);
+                      setSelectedOrder(null);
+                    }}
+                    className="w-full p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {item.productName}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Qty: {item.quantity} × {formatPrice(item.price / item.quantity)}
+                        </p>
+                      </div>
+                      <div className="text-green-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="mt-6">
+                <button
+                  onClick={() => {
+                    setShowReviewSelection(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+                >
+                  Batal
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -36,7 +36,7 @@ export default function CheckoutPage() {
     // Calculate totals
     const subtotal = checkoutItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const shippingCost = 0; // Free shipping
-    const total = subtotal - discountAmount + shippingCost;
+    const total = Math.max(subtotal - discountAmount + shippingCost, 0); // Ensure total is not negative
 
     // Initialize data and check authentication
     useEffect(() => {
@@ -67,6 +67,15 @@ export default function CheckoutPage() {
         }
     }, [addresses, selectedAddress]);
 
+    // Reset promocode when subtotal changes (quantity changes)
+    useEffect(() => {
+        if (promoStatus?.success && discountAmount > 0) {
+            // Recalculate discount amount based on new subtotal
+            const newDiscount = subtotal * (promoStatus.discount / 100);
+            setDiscountAmount(newDiscount);
+        }
+    }, [subtotal, promoStatus?.success, promoStatus?.discount]);
+
     const handleQuantityChange = (id, delta) => {
         updateCheckoutQuantity(id, delta);
     };
@@ -79,20 +88,42 @@ export default function CheckoutPage() {
             return;
         }
         try {
-            // Ganti URL sesuai endpoint backend untuk validasi promo
+            // Gunakan API yang sudah ada dan struktur response yang benar
             const res = await axios.get(`/api/discounts/${kuponCode}`);
-            const promo = res.data;
-            if (!promo.valid) {
-                setPromoStatus({ success: false, message: "Kode promo tidak valid atau sudah expired." });
+            
+            // Backend mengembalikan structure: { message: "...", data: DiscountDTO }
+            const promo = res.data.data; // Akses data dari struktur response
+            
+            // Validasi promo berdasarkan backend logic
+            if (!promo || !promo.valid) {
+                setPromoStatus({ 
+                    success: false, 
+                    message: "Kode promo tidak valid atau sudah expired." 
+                });
                 return;
             }
-            // Hitung diskon
+            
+            // Hitung diskon berdasarkan discountPercentage
             const discount = subtotal * (promo.discountPercentage / 100);
             setDiscountAmount(discount);
-            setPromoStatus({ success: true, message: `Promo berhasil diterapkan: diskon ${promo.discountPercentage}%`, discount: promo.discountPercentage });
+            setPromoStatus({ 
+                success: true, 
+                message: `Promo berhasil diterapkan: diskon ${promo.discountPercentage}%`, 
+                discount: promo.discountPercentage 
+            });
         } catch (err) {
-            setPromoStatus({ success: false, message: err.response?.data?.message || "Kode promo tidak ditemukan." });
+            console.error('Error applying promo code:', err);
+            setPromoStatus({ 
+                success: false, 
+                message: err.response?.data?.message || "Kode promo tidak ditemukan." 
+            });
         }
+    };
+
+    const handleRemoveKupon = () => {
+        setKuponCode("");
+        setPromoStatus(null);
+        setDiscountAmount(0);
     };
 
     const handleCreateOrder = async () => {
@@ -104,6 +135,23 @@ export default function CheckoutPage() {
         if (!selectedAddress.addressId) {
             alert("ID alamat tidak valid. Silakan pilih alamat lain.");
             return;
+        }
+        
+        // Validasi ulang promocode jika ada sebelum membuat order
+        if (kuponCode && promoStatus?.success && discountAmount > 0) {
+            try {
+                const res = await axios.get(`/api/discounts/${kuponCode}`);
+                const promo = res.data.data;
+                if (!promo || !promo.valid) {
+                    alert("Kode promo sudah tidak valid. Silakan hapus atau gunakan kode promo lain.");
+                    setPromoStatus({ success: false, message: "Kode promo sudah tidak valid." });
+                    setDiscountAmount(0);
+                    return;
+                }
+            } catch (err) {
+                alert("Gagal memvalidasi kode promo. Silakan coba lagi.");
+                return;
+            }
         }
         
         console.log('Selected Address:', selectedAddress);
@@ -119,7 +167,8 @@ export default function CheckoutPage() {
                 productId: item.productId || item.id, // Use productId if available
                 quantity: item.qty
             })),
-            promoCode: kuponCode || undefined
+            // Hanya kirim promoCode jika sudah berhasil divalidasi dan ada discount
+            ...(promoStatus?.success && kuponCode && { promoCode: kuponCode })
         };
         
         console.log('Order Data being sent:', orderData);
@@ -290,25 +339,51 @@ export default function CheckoutPage() {
                             {/* Coupon Code */}
                             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
                                 <h2 className="text-xl font-bold text-gray-800 mb-4">Kode Promo</h2>
-                                <div className="flex space-x-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Masukkan kode kupon"
-                                        value={kuponCode}
-                                        onChange={(e) => setKuponCode(e.target.value)}
-                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                    />
-                                    <button
-                                        onClick={handleApplyKupon}
-                                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                    >
-                                        Terapkan
-                                    </button>
-                                </div>
-                                {promoStatus && (
-                                    <div className={`mt-2 text-sm ${promoStatus.success ? 'text-green-600' : 'text-red-600'}`}>
-                                        {promoStatus.message}
+                                {promoStatus?.success ? (
+                                    // Tampilkan promo yang sudah diterapkan
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-sm font-medium text-green-800">
+                                                    Kode: {kuponCode}
+                                                </h4>
+                                                <p className="text-sm text-green-600">
+                                                    Diskon {promoStatus.discount}% berhasil diterapkan
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={handleRemoveKupon}
+                                                className="text-red-600 hover:text-red-800 text-sm font-medium px-3 py-1 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                                            >
+                                                Hapus
+                                            </button>
+                                        </div>
                                     </div>
+                                ) : (
+                                    // Tampilkan input untuk memasukkan kode promo
+                                    <>
+                                        <div className="flex space-x-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Masukkan kode kupon"
+                                                value={kuponCode}
+                                                onChange={(e) => setKuponCode(e.target.value.toUpperCase())}
+                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                            />
+                                            <button
+                                                onClick={handleApplyKupon}
+                                                disabled={!kuponCode.trim()}
+                                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Terapkan
+                                            </button>
+                                        </div>
+                                        {promoStatus && !promoStatus.success && (
+                                            <div className="mt-2 text-sm text-red-600">
+                                                {promoStatus.message}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
