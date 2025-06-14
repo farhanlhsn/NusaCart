@@ -141,6 +141,15 @@ const ProductDetail = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Breadcrumbs */}
+      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
+        <button onClick={() => navigate('/')} className="hover:text-red-600 cursor-pointer transition-colors">Beranda</button>
+        <span>|</span>
+        <button onClick={() => navigate('/products')} className="hover:text-red-600 cursor-pointer transition-colors">Produk</button>
+        <span>|</span>
+        <span className="text-red-600 font-medium">{currentProduct.productName}</span>
+      </div>
+      {/* End Breadcrumbs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Product Images */}
         <div className="space-y-4">

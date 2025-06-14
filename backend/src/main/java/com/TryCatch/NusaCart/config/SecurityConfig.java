@@ -72,6 +72,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SELLER") // User endpoints accessible by all logged in users
                 .requestMatchers("/api/products/{productId}").hasAnyRole("USER", "SELLER") // Product detail endpoint requires authentication for wishlist status
                 .requestMatchers("/api/products/**").permitAll() // Other product endpoints accessible by all users
+                .requestMatchers("/api/discounts/**").permitAll() // Promo endpoints accessible by all users
 
                 //.requestMatchers("/**").permitAll() //Hapus ini ya nanti
                 .anyRequest().authenticated()

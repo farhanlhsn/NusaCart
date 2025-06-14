@@ -6,6 +6,7 @@ import com.TryCatch.NusaCart.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.EntityNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -72,8 +73,11 @@ public class OrderService {
         if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
             DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
                     .filter(DiscountEntity::isValid)
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired promo code"));
+                    .orElseThrow(() -> new EntityNotFoundException("Promo code not found or expired"));
 
+            if (discount.getUsageLimit() <= 0) {
+                throw new IllegalArgumentException("Promo code usage limit reached");
+            }
             double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
             total -= discountAmount;
 
@@ -84,7 +88,7 @@ public class OrderService {
         }
 
         order.setTotal(total);
-        orderRepository.save(order);
+        orderRepository.save(order);        
         CartEntity userCart = cartRepository.findByUser(user).orElse(null);
         if (userCart != null) {
         for (OrderItemEntity item : items) {

@@ -82,11 +82,6 @@ export default function Navbar() {
               <button className="icon-button" onClick={() => navigate('/wishlist')}>
                 <HeartIcon className="icon" />
               </button>
-              <button className="icon-button" onClick={() => navigate('/orders')}>
-                <svg className="icon" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zM12 18.75a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5zm3.75 0a1.5 1.5 0 01-3 0V8.25a1.5 1.5 0 013 0v10.5z" />
-                </svg>
-              </button>
               <button className="icon-button" onClick={() => navigate('/cart')}>
                 <ShoppingCartIcon className="icon" />
               </button>

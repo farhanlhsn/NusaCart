@@ -88,6 +88,13 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
+          <button onClick={() => window.location.href = '/'} className="hover:text-red-600 cursor-pointer transition-colors">Beranda</button>
+          <span>|</span>
+          <span className="text-red-600 font-medium">Produk</span>
+        </div>
+        {/* End Breadcrumbs */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900">Semua Produk</h1>
           <button

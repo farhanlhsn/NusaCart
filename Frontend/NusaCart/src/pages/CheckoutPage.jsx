@@ -4,6 +4,7 @@ import useCartStore from "../stores/cartStore";
 import useAddressStore from "../stores/addressStore";
 import useAuthStore from "../stores/authStore";
 import AddressSelectionModal from "../components/AddressSelectionModal";
+import axios from "axios";
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
@@ -14,6 +15,8 @@ export default function CheckoutPage() {
     const { user, isLoggedIn } = useAuthStore();
     
     const [kuponCode, setKuponCode] = useState("");
+    const [promoStatus, setPromoStatus] = useState(null); // { success: true/false, message: '', discount: 0 }
+    const [discountAmount, setDiscountAmount] = useState(0);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [showAddressModal, setShowAddressModal] = useState(false);
 
@@ -33,7 +36,7 @@ export default function CheckoutPage() {
     // Calculate totals
     const subtotal = checkoutItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const shippingCost = 0; // Free shipping
-    const total = subtotal + shippingCost;
+    const total = subtotal - discountAmount + shippingCost;
 
     // Initialize data and check authentication
     useEffect(() => {
@@ -68,9 +71,28 @@ export default function CheckoutPage() {
         updateCheckoutQuantity(id, delta);
     };
 
-    const handleApplyKupon = () => {
-        // Implementation for applying coupon code
-        console.log("Applying coupon:", kuponCode);
+    const handleApplyKupon = async () => {
+        setPromoStatus(null);
+        setDiscountAmount(0);
+        if (!kuponCode) {
+            setPromoStatus({ success: false, message: "Masukkan kode promo." });
+            return;
+        }
+        try {
+            // Ganti URL sesuai endpoint backend untuk validasi promo
+            const res = await axios.get(`/api/discounts/${kuponCode}`);
+            const promo = res.data;
+            if (!promo.valid) {
+                setPromoStatus({ success: false, message: "Kode promo tidak valid atau sudah expired." });
+                return;
+            }
+            // Hitung diskon
+            const discount = subtotal * (promo.discountPercentage / 100);
+            setDiscountAmount(discount);
+            setPromoStatus({ success: true, message: `Promo berhasil diterapkan: diskon ${promo.discountPercentage}%`, discount: promo.discountPercentage });
+        } catch (err) {
+            setPromoStatus({ success: false, message: err.response?.data?.message || "Kode promo tidak ditemukan." });
+        }
     };
 
     const handleCreateOrder = async () => {
@@ -96,7 +118,8 @@ export default function CheckoutPage() {
             items: checkoutItems.map(item => ({
                 productId: item.productId || item.id, // Use productId if available
                 quantity: item.qty
-            }))
+            })),
+            promoCode: kuponCode || undefined
         };
         
         console.log('Order Data being sent:', orderData);
@@ -120,12 +143,14 @@ export default function CheckoutPage() {
                 } 
             });
         } catch (error) {
-            console.error("Failed to create order:", error);
-            alert("Gagal membuat pesanan. Silakan coba lagi.");
+            // Tampilkan error promo jika ada
+            if (error.response?.data?.message) {
+                alert(error.response.data.message);
+            } else {
+                alert("Gagal membuat pesanan. Silakan coba lagi.");
+            }
         }
     };
-
-
 
     return (
         <div className="min-h-screen bg-gray-50 p-4">
@@ -280,6 +305,11 @@ export default function CheckoutPage() {
                                         Terapkan
                                     </button>
                                 </div>
+                                {promoStatus && (
+                                    <div className={`mt-2 text-sm ${promoStatus.success ? 'text-green-600' : 'text-red-600'}`}>
+                                        {promoStatus.message}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Order Summary */}
@@ -293,6 +323,12 @@ export default function CheckoutPage() {
                                         <span>Biaya Pengiriman:</span>
                                         <span>Gratis</span>
                                     </div>
+                                    {discountAmount > 0 && (
+                                        <div className="flex justify-between text-green-700">
+                                            <span>Diskon Promo:</span>
+                                            <span>- Rp. {discountAmount.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
                                     <hr className="my-3" />
                                     <div className="flex justify-between text-lg font-bold">
                                         <span>Total:</span>
