@@ -24,70 +24,7 @@ public class OrderService {
     private final UserService userService;
     private final DiscountRepository discountRepository;
 
-/*     public Map<String, String> placeOrder(OrderCreateDTO dto) {
-        Integer userID = userService.getCurrentUser().getUserId();
-        UserEntity user = userRepository.findByUserId(userID).orElseThrow();
-
-        // 🛡️ Ensure address belongs to this user
-        AddressEntity address = addressRepository.findById(dto.getAddressId())
-                .filter(a -> a.getUser().getUserId().equals(userID))
-                .orElseThrow(() -> new IllegalArgumentException("Invalid address for this user"));
-
-        PaymentMethodEntity paymentMethod = paymentMethodRepository.findById(dto.getPaymentMethodId())
-                .filter(PaymentMethodEntity::getIsActive)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or inactive payment method"));
-
-        OrderEntity order = new OrderEntity();
-        order.setUser(user);
-        order.setCreatedAt(LocalDateTime.now());
-        order.setAddress(address);
-        order.setPaymentMethod(paymentMethod);
-        order.setPaymentStatus("PAID");
-        order.setOrderStatus("PROCESSING");
-
-        List<OrderItemEntity> items = dto.getItems().stream().map(itemDto -> {
-            ProductEntity product = productRepository.findById(itemDto.getProductId()).orElseThrow();
-
-            OrderItemEntity item = new OrderItemEntity();
-            item.setProduct(product);
-            item.setQuantity(itemDto.getQuantity());
-            item.setPrice(product.getPrice() * itemDto.getQuantity());
-            item.setOrder(order);
-
-            return item;
-        }).collect(Collectors.toList());
-
-        order.setItems(items);
-
-        //(Implementasi voucher dari discount promotion ok le pls fix)
-        // Total awal sebelum diskon 
-        double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
-
-        // Terapkan diskon jika ada promoCode
-        if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
-            DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
-                    .filter(DiscountEntity::isValid)
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired promo code"));
-
-            // Terapkan diskon ke total
-            double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
-            total -= discountAmount;
-
-            // Tandai promo sebagai telah digunakan (misal kurangi usageLimit)
-            discount.setUsageLimit(discount.getUsageLimit() - 1);
-            discountRepository.save(discount);
-
-            // Simpan info discount ke OrderEntity
-            order.setDiscount(discount);
-        }
-        order.setTotal(total);
-
-        orderRepository.save(order);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Order placed successfully");
-        return response;
-    }
+/* 
     */
     public Map<String, String> placeOrder(OrderCreateDTO dto) {
         Integer userID = userService.getCurrentUser().getUserId();
@@ -127,15 +64,26 @@ public class OrderService {
             item.setQuantity(itemDto.getQuantity());
             item.setPrice(product.getPrice() * itemDto.getQuantity());
             item.setOrder(order);
-    
             return item;
         }).collect(Collectors.toList());
-    
         order.setItems(items);
+        double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
+        // Terapkan diskon jika ada promoCode
+        if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
+            DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
+                    .filter(DiscountEntity::isValid)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired promo code"));
+            // Terapkan diskon ke total
+            double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
+            total -= discountAmount;
+            // Tandai promo sebagai telah digunakan (misal kurangi usageLimit)
+            discount.setUsageLimit(discount.getUsageLimit() - 1);
+            discountRepository.save(discount);
+            // Simpan info discount ke OrderEntity
+            order.setDiscount(discount);
+        }
         order.setTotal(items.stream().mapToDouble(OrderItemEntity::getPrice).sum());
-    
         orderRepository.save(order);
-    
         Map<String, String> response = new HashMap<>();
         response.put("message", "Order placed successfully");
         return response;
