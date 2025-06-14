@@ -23,7 +23,7 @@ public class OrderService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final UserService userService;
 
-    public Map<String, String> placeOrder(OrderCreateDTO dto) {
+/*     public Map<String, String> placeOrder(OrderCreateDTO dto) {
         Integer userID = userService.getCurrentUser().getUserId();
         UserEntity user = userRepository.findByUserId(userID).orElseThrow();
 
@@ -65,6 +65,60 @@ public class OrderService {
         response.put("message", "Order placed successfully");
         return response;
     }
+    */
+    public Map<String, String> placeOrder(OrderCreateDTO dto) {
+        Integer userID = userService.getCurrentUser().getUserId();
+        UserEntity user = userRepository.findByUserId(userID).orElseThrow();
+    
+        // 🛡️ Ensure address belongs to this user
+        AddressEntity address = addressRepository.findById(dto.getAddressId())
+                .filter(a -> a.getUser().getUserId().equals(userID))
+                .orElseThrow(() -> new IllegalArgumentException("Invalid address for this user"));
+    
+        PaymentMethodEntity paymentMethod = paymentMethodRepository.findById(dto.getPaymentMethodId())
+                .filter(PaymentMethodEntity::getIsActive)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or inactive payment method"));
+    
+        OrderEntity order = new OrderEntity();
+        order.setUser(user);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setAddress(address);
+        order.setPaymentMethod(paymentMethod);
+        order.setPaymentStatus("PAID");
+        order.setOrderStatus("PROCESSING");
+    
+        List<OrderItemEntity> items = dto.getItems().stream().map(itemDto -> {
+            ProductEntity product = productRepository.findById(itemDto.getProductId()).orElseThrow();
+    
+            // ✅ Check stock
+            if (product.getStock() < itemDto.getQuantity()) {
+                throw new IllegalArgumentException("Not enough stock for product: " + product.getProductName());
+            }
+    
+            // 🔻 Decrement stock
+            product.setStock(product.getStock() - itemDto.getQuantity());
+            productRepository.save(product); // Optional depending on persistence context
+    
+            OrderItemEntity item = new OrderItemEntity();
+            item.setProduct(product);
+            item.setQuantity(itemDto.getQuantity());
+            item.setPrice(product.getPrice() * itemDto.getQuantity());
+            item.setOrder(order);
+    
+            return item;
+        }).collect(Collectors.toList());
+    
+        order.setItems(items);
+        order.setTotal(items.stream().mapToDouble(OrderItemEntity::getPrice).sum());
+    
+        orderRepository.save(order);
+    
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Order placed successfully");
+        return response;
+    }
+
+
 
     public List<OrderResponseDTO> getOrders() {
         Integer userID = userService.getCurrentUser().getUserId();
