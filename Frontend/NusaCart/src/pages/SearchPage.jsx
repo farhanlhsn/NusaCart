@@ -313,10 +313,14 @@ export default function SearchPage() {
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Toko Terkait</h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {stores.map(store => (
-                        <div key={store.id} className="bg-white rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition-all">
+                        <button 
+                          key={store.id} 
+                          onClick={() => navigate(`/toko/${store.id}`)}
+                          className="bg-white rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition-all cursor-pointer"
+                        >
                           <img src={store.image} alt={store.name} className="w-16 h-16 rounded-full object-cover mb-2" />
-                          <div className="font-bold text-gray-800 text-center">{store.name}</div>
-                        </div>
+                          <div className="font-bold text-gray-800 text-center hover:text-red-600 transition-colors">{store.name}</div>
+                        </button>
                       ))}
                     </div>
                   </div>

@@ -58,7 +58,7 @@ public class UserEntity {
 
     private String profilePicture;
 
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
 
     // --- JPA Callback Method ---

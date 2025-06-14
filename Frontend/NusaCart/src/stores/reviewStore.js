@@ -19,11 +19,6 @@ const useReviewStore = create((set, get) => ({
 
   // Fetch reviews for a specific product
   fetchReviewsByProduct: async (productId) => {
-    // Debug logging hanya untuk development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ReviewStore - fetchReviewsByProduct called with productId:', productId, 'type:', typeof productId);
-    }
-    
     // Validate productId parameter
     if (!productId || isNaN(parseInt(productId))) {
       console.error('ReviewStore - Invalid productId:', productId);
@@ -50,16 +45,8 @@ const useReviewStore = create((set, get) => ({
     }));
     
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('ReviewStore - Making API call to fetch reviews for product:', productId);
-      }
-      
       const response = await reviewAPI.getByProduct(productId);
       const reviews = response.data || [];
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('ReviewStore - API response received:', reviews);
-      }
       
       set(state => ({
         productReviews: {
@@ -133,10 +120,6 @@ const useReviewStore = create((set, get) => ({
     const state = get();
     const productIdStr = productId ? productId.toString() : '';
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ReviewStore - Force refreshing reviews for product:', productId);
-    }
-    
     // Clear existing cache for this product
     set(state => ({
       productReviews: {
@@ -148,10 +131,6 @@ const useReviewStore = create((set, get) => ({
     
     // Force re-fetch
     const result = await get().fetchReviewsByProduct(productId);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ReviewStore - Refresh completed, new reviews count:', result?.length || 0);
-    }
     
     return result;
   },
@@ -189,6 +168,22 @@ const useReviewStore = create((set, get) => ({
     });
     
     return distribution;
+  },
+
+  // Check if current user has already reviewed a product
+  hasUserReviewedProduct: (productId, userId) => {
+    if (!productId || !userId) return false;
+    
+    const reviews = get().getReviewsByProduct(productId);
+    return reviews.some(review => review.userId === userId);
+  },
+
+  // Get user's review for a specific product
+  getUserReviewForProduct: (productId, userId) => {
+    if (!productId || !userId) return null;
+    
+    const reviews = get().getReviewsByProduct(productId);
+    return reviews.find(review => review.userId === userId) || null;
   },
 
   // Set current review

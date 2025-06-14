@@ -287,7 +287,14 @@ export default function CheckoutPage() {
                                                         </svg>
                                                     </div>
                                                     <div>
-                                                        <h2 className="text-lg font-bold text-gray-800">{storeData.store.name}</h2>
+                                                        <h2 className="text-lg font-bold text-gray-800">
+                                                                                                                         <button 
+                                                                 onClick={() => navigate(`/toko/${storeId}`)}
+                                                                 className="hover:text-red-600 transition-colors cursor-pointer"
+                                                             >
+                                                                 {storeData.store.name}
+                                                             </button>
+                                                        </h2>
                                                         <p className="text-sm text-gray-500">{storeData.store.location}</p>
                                                     </div>
                                                 </div>
