@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import ChatButton from "../components/ChatButton";
 import useSearchStore from "../stores/searchStore";
 import useProductStore from "../stores/productStore";
 

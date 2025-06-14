@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authAPI, userAPI } from '../services/api';
+import { proactiveTokenRefresh } from '../services/api';
 
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      isLoggedIn: false,
       user: null,
-      token: null,
+      isLoggedIn: false,
       loading: false,
       error: null,
 
@@ -15,29 +15,20 @@ const useAuthStore = create(
         set({ loading: true, error: null });
         try {
           const response = await authAPI.login(credentials);
-          console.log('AuthStore received response:', response.data);
-          
-          // Backend uses cookie-based auth, no token in response body
-          // Response format: {status: 'success', message: '...', tokenType: 'Cookie', expires_in: '...', user: {...}}
-          const { user } = response.data;
-          
           set({
+            user: response.data.user,
             isLoggedIn: true,
-            user: user,
-            token: 'cookie-based', // Indicate cookie-based auth
             loading: false,
             error: null
           });
-          
           return response.data;
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Login failed';
-          set({ 
-            loading: false, 
+          const errorMessage = error.response?.data?.message || 'Login gagal';
+          set({
             error: errorMessage,
+            loading: false,
             isLoggedIn: false,
-            user: null,
-            token: null
+            user: null
           });
           throw error;
         }
@@ -47,75 +38,94 @@ const useAuthStore = create(
         set({ loading: true, error: null });
         try {
           const response = await authAPI.register(userData);
-          set({ loading: false, error: null });
-          return response.data;
-        } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Registration failed';
-          set({ loading: false, error: errorMessage });
-          throw error;
-        }
-      },
-
-      logout: async () => {
-        try {
-          // Call backend logout to clear cookies
-          await authAPI.logout();
-        } catch (error) {
-          console.error('Logout error:', error);
-        }
-        
-        // No need to clear localStorage token since we use cookies
-        // Cookies are cleared by backend logout endpoint
-        
-        set({
-          isLoggedIn: false,
-          user: null,
-          token: null,
-          loading: false,
-          error: null
-        });
-      },
-
-      forgotPassword: async (email) => {
-        set({ loading: true, error: null });
-        try {
-          const response = await authAPI.forgotPassword({ email });
-          set({ loading: false, error: null });
-          return response.data;
-        } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Failed to send reset email';
-          set({ loading: false, error: errorMessage });
-          throw error;
-        }
-      },
-
-      resetPassword: async (token, newPassword) => {
-        set({ loading: true, error: null });
-        try {
-          const response = await authAPI.resetPassword({ token, newPassword });
-          set({ loading: false, error: null });
-          return response.data;
-        } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Failed to reset password';
-          set({ loading: false, error: errorMessage });
-          throw error;
-        }
-      },
-
-      updateProfile: async (profileData) => {
-        set({ loading: true, error: null });
-        try {
-          const response = await userAPI.updateProfile(profileData);
-          set({ 
-            user: response.data,
+          set({
             loading: false,
             error: null
           });
           return response.data;
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Failed to update profile';
-          set({ loading: false, error: errorMessage });
+          const errorMessage = error.response?.data?.message || 'Registrasi gagal';
+          set({
+            error: errorMessage,
+            loading: false
+          });
           throw error;
+        }
+      },
+
+      logout: async () => {
+        set({ loading: true });
+        try {
+          await authAPI.logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+          // Continue with logout even if API call fails
+        } finally {
+          // Clear all auth state
+          set({
+            user: null,
+            isLoggedIn: false,
+            loading: false,
+            error: null
+          });
+          
+          // Clear localStorage
+          localStorage.removeItem('userLoginStatus');
+          sessionStorage.clear();
+        }
+      },
+
+      // Manual refresh token function
+      refreshToken: async () => {
+        if (!get().isLoggedIn) {
+          console.log('[Auth Store] User not logged in, skipping refresh');
+          return false;
+        }
+
+        try {
+          console.log('[Auth Store] Manually refreshing token...');
+          await proactiveTokenRefresh();
+          
+          // Optionally refresh user data after token refresh
+          await get().refreshUser();
+          
+          console.log('[Auth Store] Manual token refresh successful');
+          return true;
+        } catch (error) {
+          console.error('[Auth Store] Manual token refresh failed:', error);
+          
+          // If refresh fails, logout user
+          if (error.response?.status === 401) {
+            console.log('[Auth Store] Refresh token expired, logging out user');
+            await get().logout();
+          }
+          
+          return false;
+        }
+      },
+
+      // Check if user session is still valid
+      checkAuthStatus: async () => {
+        if (!get().isLoggedIn) return false;
+
+        try {
+          // Try to get user profile to verify session
+          const response = await userAPI.getProfile();
+          set({ 
+            user: response.data,
+            error: null
+          });
+          return true;
+        } catch (error) {
+          console.error('[Auth Store] Auth status check failed:', error);
+          
+          // If 401, try to refresh token
+          if (error.response?.status === 401) {
+            console.log('[Auth Store] Session invalid, attempting refresh...');
+            return await get().refreshToken();
+          }
+          
+          return false;
         }
       },
 
@@ -132,8 +142,16 @@ const useAuthStore = create(
           });
         } catch (error) {
           console.error('Failed to refresh user:', error);
-          // If cookies are invalid, logout
-          get().logout();
+          set({ loading: false });
+          
+          // If cookies are invalid, try refresh first
+          if (error.response?.status === 401) {
+            const refreshSuccess = await get().refreshToken();
+            if (!refreshSuccess) {
+              // If refresh fails, logout
+              get().logout();
+            }
+          }
         }
       },
 
@@ -149,5 +167,19 @@ const useAuthStore = create(
     }
   )
 );
+
+// Set up periodic auth status check (every 5 minutes)
+if (typeof window !== 'undefined') {
+  setInterval(async () => {
+    const store = useAuthStore.getState();
+    if (store.isLoggedIn) {
+      console.log('[Auth Store] Periodic auth status check...');
+      const isValid = await store.checkAuthStatus();
+      if (!isValid) {
+        console.log('[Auth Store] Auth status check failed, user may be logged out');
+      }
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+}
 
 export default useAuthStore;

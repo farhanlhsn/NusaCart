@@ -33,7 +33,8 @@ const SellerDashboard = () => {
     setShowCategoryModal,
     setNewCategoryId,
     setCategories,
-    fetchStoreAndProducts
+    fetchStoreAndProducts,
+    refreshCategories
   } = useSellerStore();
   const [activeMenu, setActiveMenu] = React.useState('produk');
   const itemsPerPage = 8;
@@ -92,6 +93,7 @@ const SellerDashboard = () => {
   const sidebarItems = [
     { id: 'beranda', label: 'Beranda', icon: '🏠' },
     { id: 'produk', label: 'Produk', icon: '📦', active: true },
+    { id: 'chat', label: 'Chat Pelanggan', icon: '💬', link: '/seller/chat' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'analisis', label: 'Analisis', icon: '📊' },
     { id: 'help', label: 'Help', icon: '❓' },
@@ -109,8 +111,8 @@ const SellerDashboard = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentProducts = products.slice(startIndex, endIndex);
 
-  // Modal Product Form
-  const ProductModal = ({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
+  // Modal Product Form - Wrapped with React.memo to prevent unnecessary re-renders
+  const ProductModal = React.memo(({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
     const [form, setForm] = React.useState(product || {
       productName: '',
       description: '',
@@ -119,108 +121,199 @@ const SellerDashboard = () => {
       idCategory: '',
       imageUrl: '',
       isActive: true,
-      generalCategory: 'LAINNYA',
-      imageUrls: []
+      generalCategory: 'LAINNYA'
     });
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
     const [selectedImages, setSelectedImages] = React.useState([]);
+    const [modalCategories, setModalCategories] = React.useState([]);
+    
+    // Use ref to store form state to prevent loss during re-renders
+    const formRef = React.useRef(form);
+    const selectedImagesRef = React.useRef(selectedImages);
+    const isRestoringRef = React.useRef(false);
+    
+    // Update refs when form changes (but not during restoration)
+    React.useEffect(() => {
+      if (!isRestoringRef.current) {
+        formRef.current = form;
+        // Save to localStorage as backup
+        if (show) {
+          localStorage.setItem('productFormBackup', JSON.stringify(form));
+        }
+      }
+    }, [form, show]);
+    
+    React.useEffect(() => {
+      if (!isRestoringRef.current) {
+        selectedImagesRef.current = selectedImages;
+      }
+    }, [selectedImages]);
+
+    // Initialize modal categories when modal opens
+    React.useEffect(() => {
+      if (show) {
+        console.log('=== ProductModal OPENED ===');
+        console.log('Current form state:', form);
+        console.log('Product prop:', product);
+        console.log('Categories available:', categories?.length || 0);
+        
+        const currentCategories = Array.isArray(categories) ? categories : [];
+        setModalCategories([...currentCategories]);
+        
+        // Try to restore from localStorage if available
+        const backup = localStorage.getItem('productFormBackup');
+        if (backup && !product) {
+          try {
+            const backupForm = JSON.parse(backup);
+            console.log('📦 Restoring form from localStorage backup:', backupForm);
+            isRestoringRef.current = true;
+            setForm(backupForm);
+            setTimeout(() => {
+              isRestoringRef.current = false;
+            }, 100);
+          } catch (e) {
+            console.log('❌ Failed to restore from backup:', e);
+          }
+        }
+      } else {
+        console.log('=== ProductModal CLOSED ===');
+        // Clear backup when modal closes
+        localStorage.removeItem('productFormBackup');
+      }
+    }, [show]); // Removed product dependency to prevent re-initialization
 
     React.useEffect(() => {
-      if (product) {
-        setForm({
-          ...product,
-          imageUrls: product.imageUrls || (product.imageUrl ? [product.imageUrl] : [])
-        });
-      } else {
-        setForm({
-          productName: '',
-          description: '',
-          price: 0,
-          stock: 0,
-          idCategory: '',
-          imageUrl: '',
-          isActive: true,
-          generalCategory: 'LAINNYA',
-          imageUrls: []
-        });
-        setSelectedImages([]);
+      if (product && show) {
+        console.log('Setting form from product:', product);
+        isRestoringRef.current = true;
+        setForm(product);
+        setTimeout(() => {
+          isRestoringRef.current = false;
+        }, 100);
       }
-    }, [product]);
+    }, [product, show]); // Added show dependency to only update when modal is open
+    
     React.useEffect(() => {
       if (newCategoryId) {
+        console.log('Setting new category ID:', newCategoryId);
         setForm(f => ({ ...f, idCategory: newCategoryId }));
+        
+        // Add new category to modal categories if not already present
+        const currentCategories = Array.isArray(categories) ? categories : [];
+        const newCategory = currentCategories.find(cat => cat.idCategory === newCategoryId);
+        console.log('Found new category:', newCategory);
+        if (newCategory) {
+          setModalCategories(prev => {
+            const exists = prev.find(cat => cat.idCategory === newCategoryId);
+            if (!exists) {
+              console.log('Adding new category to modal categories:', newCategory);
+              return [...prev, newCategory];
+            }
+            return prev;
+          });
+        }
       }
-    }, [newCategoryId]);
+    }, [newCategoryId]); // Removed categories and modalCategories dependencies
+    
+    // Update modalCategories when global categories change (after adding new category)
+    React.useEffect(() => {
+      if (show && Array.isArray(categories)) {
+        console.log('🔄 Updating modal categories from global categories:', categories.length);
+        console.log('Current modal categories:', modalCategories.length);
+        console.log('Global categories:', categories.map(c => ({ id: c.idCategory, name: c.namaCategory })));
+        
+        // Always update modalCategories to match global categories
+        setModalCategories([...categories]);
+        console.log('✅ Modal categories updated successfully');
+      }
+    }, [categories, show]);
+    
+    // Additional effect to ensure modalCategories is updated after new category is added
+    React.useEffect(() => {
+      if (newCategoryId && Array.isArray(categories) && categories.length > 0) {
+        console.log('🆕 New category detected, forcing modalCategories update');
+        const updatedCategories = [...categories];
+        setModalCategories(updatedCategories);
+        console.log('Updated modalCategories:', updatedCategories.map(c => ({ id: c.idCategory, name: c.namaCategory })));
+      }
+    }, [newCategoryId, categories]);
+    
+    // Handle opening category modal
+    const handleOpenCategoryModal = React.useCallback(() => {
+      console.log('🏷️ Opening category modal');
+      console.log('Current form before category modal:', formRef.current);
+      console.log('Current selected images:', selectedImagesRef.current);
+      // Save current state before opening category modal
+      localStorage.setItem('productFormBeforeCategory', JSON.stringify({
+        form: formRef.current,
+        selectedImages: selectedImagesRef.current.length
+      }));
+      setShowCategoryModal(true);
+    }, []);
+    
+    // Handle category modal close - restore form if needed
+    React.useEffect(() => {
+      if (!showCategoryModal && show) {
+        console.log('🏷️ Category modal closed, checking form state');
+        // Small delay to ensure category updates are processed
+        setTimeout(() => {
+          const backup = localStorage.getItem('productFormBeforeCategory');
+          if (backup) {
+            try {
+              const { form: backupForm } = JSON.parse(backup);
+              console.log('📦 Backup form found:', backupForm);
+              
+              // Only restore if current form is different and seems to be reset
+              const currentFormEmpty = !form.productName && !form.description && form.price === 0;
+              const backupFormHasData = backupForm.productName || backupForm.description || backupForm.price > 0;
+              
+              console.log('Form comparison:', { currentFormEmpty, backupFormHasData });
+              
+              if (currentFormEmpty && backupFormHasData) {
+                console.log('🔄 Form appears to be reset, restoring from backup');
+                isRestoringRef.current = true;
+                setForm(backupForm);
+                setTimeout(() => {
+                  isRestoringRef.current = false;
+                }, 100);
+              } else {
+                console.log('✅ Form state is preserved, no restoration needed');
+              }
+              
+              localStorage.removeItem('productFormBeforeCategory');
+            } catch (e) {
+              console.log('❌ Failed to restore from category backup:', e);
+            }
+          }
+        }, 100);
+      }
+    }, [showCategoryModal, show]); // Removed form dependency to prevent excessive re-renders
+
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
-      setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+      const newForm = { ...form, [name]: type === 'checkbox' ? checked : value };
+      setForm(newForm);
     };
+    
     const handleImage = (url) => {
       setForm({ ...form, imageUrl: url });
     };
+    
     const handleFileChange = (e) => {
       const files = Array.from(e.target.files);
-      const existingImagesCount = form.imageUrls ? form.imageUrls.length : 0;
-      const currentSelectedCount = selectedImages.length;
-      const totalImages = existingImagesCount + currentSelectedCount + files.length;
-      
-      if (totalImages > 5) {
-        setErr(`Maksimal 5 gambar total. Anda sudah memiliki ${existingImagesCount} gambar existing dan ${currentSelectedCount} gambar terpilih, hanya bisa menambah ${5 - existingImagesCount - currentSelectedCount} gambar lagi.`);
-        return;
-      }
-      
-      // Validasi ukuran file (maksimal 5MB per file)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      const oversizedFiles = files.filter(file => file.size > maxSize);
-      if (oversizedFiles.length > 0) {
-        setErr(`File terlalu besar: ${oversizedFiles.map(f => f.name).join(', ')}. Maksimal 5MB per file.`);
-        return;
-      }
-      
-      // Gabungkan gambar yang sudah dipilih sebelumnya dengan gambar baru
-      setSelectedImages([...selectedImages, ...files]);
-      setErr(''); // Clear error if valid
+      setSelectedImages(files);
     };
-
-    const removeImage = (index) => {
-      const newImages = selectedImages.filter((_, i) => i !== index);
-      setSelectedImages(newImages);
-    };
-
-    const handleDrop = (e) => {
-      e.preventDefault();
-      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-      const existingImagesCount = form.imageUrls ? form.imageUrls.length : 0;
-      const currentSelectedCount = selectedImages.length;
-      const totalImages = existingImagesCount + currentSelectedCount + files.length;
-      
-      if (totalImages > 5) {
-        setErr(`Maksimal 5 gambar total. Anda sudah memiliki ${existingImagesCount} gambar existing dan ${currentSelectedCount} gambar terpilih, hanya bisa menambah ${5 - existingImagesCount - currentSelectedCount} gambar lagi.`);
-        return;
-      }
-      
-      // Validasi ukuran file (maksimal 5MB per file)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      const oversizedFiles = files.filter(file => file.size > maxSize);
-      if (oversizedFiles.length > 0) {
-        setErr(`File terlalu besar: ${oversizedFiles.map(f => f.name).join(', ')}. Maksimal 5MB per file.`);
-        return;
-      }
-      
-      // Gabungkan gambar yang sudah dipilih sebelumnya dengan gambar baru
-      setSelectedImages([...selectedImages, ...files]);
-      setErr('');
-    };
-
-    const handleDragOver = (e) => {
-      e.preventDefault();
-    };
+    
     const handleSubmit = async (e) => {
       e.preventDefault();
       setSaving(true);
       setErr('');
       try {
+        // Clear backup on successful submit
+        localStorage.removeItem('productFormBackup');
+        localStorage.removeItem('productFormBeforeCategory');
+        
         // Selalu gunakan FormData
         const formData = new FormData();
         
@@ -233,15 +326,15 @@ const SellerDashboard = () => {
             stock: Number(form.stock),
             idCategory: form.idCategory ? Number(form.idCategory) : undefined,
             isActive: form.isActive,
-            generalCategory: form.generalCategory,
-            // Kirim existing imageUrls untuk digabung dengan gambar baru
-            existingImageUrls: form.imageUrls || []
+            generalCategory: form.generalCategory
           };
           formData.append('productData', JSON.stringify(productDataJson));
           if (selectedImages.length > 0) {
             selectedImages.forEach(img => formData.append('images', img));
           }
-          await api.put(`/api/products/${product.productId}`, formData);
+          await api.put(`/api/products/${product.productId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
         } else {
           // CREATE produk - field sesuai ProductCreateDTO (DENGAN idToko)
           if (selectedImages.length === 0) {
@@ -259,7 +352,9 @@ const SellerDashboard = () => {
           };
           formData.append('productData', JSON.stringify(productDataJson));
           selectedImages.forEach(img => formData.append('images', img));
-          await api.post('/api/products', formData);
+          await api.post('/api/products', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
         }
         
         onSave();
@@ -267,245 +362,104 @@ const SellerDashboard = () => {
           onCategoryAdded(form);
         }
       } catch (error) {
-        console.error('Upload error:', error);
-        let errorMessage = 'Gagal menyimpan produk';
-        
-        if (error.code === 'ECONNABORTED') {
-          errorMessage = 'Upload timeout. Coba dengan gambar yang lebih kecil atau koneksi yang lebih stabil.';
-        } else if (error.response?.status === 413) {
-          errorMessage = 'File terlalu besar. Maksimal ukuran file adalah 5MB per gambar.';
-        } else if (error.response?.status === 400) {
-          errorMessage = error.response?.data?.message || 'Data tidak valid. Periksa kembali form Anda.';
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        setErr(errorMessage);
+        setErr(error.response?.data?.message || error.message || 'Gagal menyimpan produk');
       } finally {
         setSaving(false);
       }
     };
+    
     if (!show) return null;
+    
     return (
-      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-4xl max-h-[90vh] overflow-y-auto transition-all">
+      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
           <h2 className="text-2xl font-bold mb-6 text-center text-red-500">{product ? 'Edit Produk' : 'Tambah Produk'}</h2>
-          {err && <div className="text-red-500 mb-4 text-center p-3 bg-red-50 rounded-lg border border-red-200">{err}</div>}
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Basic Info */}
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">Nama Produk</label>
-                <input name="productName" value={form.productName} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required />
-              </div>
-              
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">Deskripsi</label>
-                <textarea name="description" value={form.description} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" rows={4} placeholder="Deskripsikan produk Anda..." />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Harga</label>
-                  <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required min={0} placeholder="0" />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Stok</label>
-                  <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required min={0} placeholder="0" />
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="font-medium text-gray-700">Kategori</label>
-                  <button type="button" onClick={() => setShowCategoryModal(true)} className="px-3 py-1 bg-red-500 text-white rounded-md text-xs hover:bg-red-600 transition">
-                    + Tambah
-                  </button>
-                </div>
-                <select name="idCategory" value={form.idCategory} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition">
-                  <option value="">Pilih Kategori</option>
-                  {categories.map(cat => (
-                    <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">Kategori Umum *</label>
-                <select name="generalCategory" value={form.generalCategory} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition" required>
-                  <option value="ELEKTRONIK">Elektronik</option>
-                  <option value="FURNITUR">Furnitur</option>
-                  <option value="PAKAIAN">Pakaian</option>
-                  <option value="MAKANAN_MINUMAN">Makanan & Minuman</option>
-                  <option value="KESEHATAN_KECANTIKAN">Kesehatan & Kecantikan</option>
-                  <option value="OLAHRAGA_OUTDOOR">Olahraga & Outdoor</option>
-                  <option value="OTOMOTIF">Otomotif</option>
-                  <option value="BUKU_ALAT_TULIS">Buku & Alat Tulis</option>
-                  <option value="MAINAN_HOBI">Mainan & Hobi</option>
-                  <option value="RUMAH_TANGGA">Rumah Tangga</option>
-                  <option value="PERHIASAN_AKSESORIS">Perhiasan & Aksesoris</option>
-                  <option value="LAINNYA">Lainnya</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="isActiveMain" className="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded" />
-                <label htmlFor="isActiveMain" className="font-medium text-gray-700">Aktifkan Produk</label>
-              </div>
-            </div>
-            
-            {/* Right Column - Images */}
-            <div>
-              <label className="block mb-3 font-medium text-gray-700">Gambar Produk {!product && '*'}</label>
-              <div className="text-xs text-gray-500 mb-4 p-2 bg-blue-50 rounded border border-blue-200">
-                📸 Maksimal 5 gambar total (JPG, PNG, JPEG) • Ukuran maksimal 5MB per gambar
-                {product && form.imageUrls && form.imageUrls.length > 0 && (
-                  <div className="mt-1 text-blue-600">
-                    💡 Gambar baru akan ditambahkan ke gambar yang sudah ada
-                  </div>
-                )}
-              </div>
-              
-              {/* Show existing images for edit mode */}
-              {product && form.imageUrls && form.imageUrls.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-sm font-medium mb-3 text-gray-700">Gambar produk saat ini ({form.imageUrls.length}/5):</div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {form.imageUrls.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <div className="w-full h-24 bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-200">
-                          <img 
-                            src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:6060${imageUrl}`} 
-                            alt={`Existing ${index + 1}`} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newImageUrls = form.imageUrls.filter((_, i) => i !== index);
-                            setForm({ ...form, imageUrls: newImageUrls });
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-                          title="Hapus gambar"
-                        >
-                          ×
-                        </button>
-                        <div className="text-xs text-center mt-1 text-blue-600 font-medium">Foto {index + 1}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 text-xs text-blue-600">
-                    💡 Klik tombol × untuk menghapus gambar yang sudah ada
-                  </div>
-                </div>
-              )}
-              
-              {/* Upload Area */}
-              <div 
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 hover:bg-red-50 transition-all duration-200"
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-              >
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/*" 
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="file-upload"
-                  max="5"
-                />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="flex flex-col items-center">
-                    <svg className="w-16 h-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <p className="text-base font-medium text-gray-700 mb-1">Klik untuk upload atau drag & drop</p>
-                    <p className="text-sm text-gray-500">PNG, JPG, JPEG hingga 5MB per file</p>
-                    <p className="text-xs text-gray-400 mt-1">Maksimal 5 gambar</p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Preview New Images */}
-              {selectedImages.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-sm font-medium mb-3 text-gray-700">
-                    Gambar baru yang akan ditambahkan ({selectedImages.length}/5)
-                    {product && form.imageUrls && form.imageUrls.length > 0 && (
-                      <span className="text-xs text-gray-500 ml-2">
-                        (Total: {form.imageUrls.length + selectedImages.length} gambar)
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {selectedImages.map((file, index) => (
-                      <div key={index} className="relative group">
-                        <div className="w-full h-24 bg-gray-100 rounded-lg overflow-hidden border-2 border-green-200">
-                          <img 
-                            src={URL.createObjectURL(file)} 
-                            alt={`Preview ${index + 1}`} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
-                          BARU
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg"
-                          title="Hapus gambar"
-                        >
-                          ×
-                        </button>
-                        <div className="text-xs text-center mt-1 truncate px-1 text-green-600 font-medium">
-                          Foto {(product && form.imageUrls ? form.imageUrls.length : 0) + index + 1}
-                        </div>
-                      </div>
-                    ))}
-                    {/* Empty slots */}
-                    {Array.from({ length: Math.max(0, 5 - (form.imageUrls?.length || 0) - selectedImages.length) }).map((_, index) => (
-                      <div key={`empty-${index}`} className="w-full h-24 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">Foto {(form.imageUrls?.length || 0) + selectedImages.length + index + 1}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 text-xs text-green-600">
-                    💡 Gambar baru ini akan ditambahkan ke gambar yang sudah ada
-                  </div>
-                </div>
-              )}
-            </div>
+          {err && <div className="text-red-500 mb-4 text-center">{err}</div>}
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Nama Produk</label>
+            <input name="productName" value={form.productName || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
           </div>
-          
-
-          
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
-            <button type="button" onClick={onClose} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
-              Batal
-            </button>
-            <button type="submit" disabled={saving} className="px-8 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-              {saving ? (
-                <div className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Menyimpan...
-                </div>
-              ) : 'Simpan'}
-            </button>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Deskripsi</label>
+            <textarea name="description" value={form.description || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" rows={2} />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Harga</label>
+            <input name="price" type="number" value={form.price || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Stok</label>
+            <input name="stock" type="number" value={form.stock || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+          </div>
+          <div className="mb-4 flex items-center gap-2">
+            <label className="block mb-2 font-medium">Kategori</label>
+            <select name="idCategory" value={form.idCategory || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition">
+              <option value="">Pilih Kategori</option>
+              {Array.isArray(modalCategories) && modalCategories.map(cat => (
+                <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
+              ))}
+            </select>
+            <button type="button" onClick={handleOpenCategoryModal} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition">Tambah Kategori</button>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Kategori Umum *</label>
+            <select name="generalCategory" value={form.generalCategory || 'LAINNYA'} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required>
+              <option value="ELEKTRONIK">Elektronik</option>
+              <option value="FURNITUR">Furnitur</option>
+              <option value="PAKAIAN">Pakaian</option>
+              <option value="MAKANAN_MINUMAN">Makanan & Minuman</option>
+              <option value="KESEHATAN_KECANTIKAN">Kesehatan & Kecantikan</option>
+              <option value="OLAHRAGA_OUTDOOR">Olahraga & Outdoor</option>
+              <option value="OTOMOTIF">Otomotif</option>
+              <option value="BUKU_ALAT_TULIS">Buku & Alat Tulis</option>
+              <option value="MAINAN_HOBI">Mainan & Hobi</option>
+              <option value="RUMAH_TANGGA">Rumah Tangga</option>
+              <option value="PERHIASAN_AKSESORIS">Perhiasan & Aksesoris</option>
+              <option value="LAINNYA">Lainnya</option>
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium">Gambar Produk {!product && '*'}</label>
+            <input 
+              type="file" 
+              multiple 
+              accept="image/*" 
+              onChange={handleFileChange}
+              className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition"
+            />
+            {form.imageUrl && (
+              <img 
+                src={form.imageUrl.startsWith('http') ? form.imageUrl : `http://localhost:6060${form.imageUrl}`} 
+                alt="Current" 
+                className="w-24 h-24 mt-2 object-cover rounded border" 
+              />
+            )}
+            {selectedImages.length > 0 && (
+              <div className="mt-2 text-sm text-green-600">
+                {selectedImages.length} gambar dipilih
+              </div>
+            )}
+          </div>
+          <div className="mb-4 flex items-center gap-2">
+            <input type="checkbox" name="isActive" checked={form.isActive || false} onChange={handleChange} id="isActive" />
+            <label htmlFor="isActive">Aktifkan Produk</label>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition">Batal</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan'}</button>
           </div>
         </form>
       </div>
     );
-  };
+  }, (prevProps, nextProps) => {
+    // Only re-render if these specific props change
+    return (
+      prevProps.show === nextProps.show &&
+      prevProps.product === nextProps.product &&
+      prevProps.tokoId === nextProps.tokoId &&
+      prevProps.newCategoryId === nextProps.newCategoryId
+    );
+  });
 
   // Modal Store Form
   const StoreModal = ({ show, onClose, onSave, store }) => {
@@ -614,21 +568,33 @@ const SellerDashboard = () => {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveMenu(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 ${
-                  activeMenu === item.id
-                    ? 'bg-red-50 text-red-600 border-red-600 shadow scale-105'
-                    : 'text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105'
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-                {item.id !== 'produk' && item.id !== 'beranda' && (
-                   <ChevronRight className="w-4 h-4 ml-auto" />
-                 )}
-              </button>
+              item.link ? (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.link)}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                </button>
+              ) : (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveMenu(item.id)}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 font-semibold text-base border-l-4 ${
+                    activeMenu === item.id
+                      ? 'bg-red-50 text-red-600 border-red-600 shadow scale-105'
+                      : 'text-gray-700 border-transparent hover:bg-gray-100 hover:scale-105'
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                  {item.id !== 'produk' && item.id !== 'beranda' && (
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              )
             ))}
           </nav>
           {/* User Profile at Bottom */}
@@ -684,7 +650,7 @@ const SellerDashboard = () => {
           </section>
 
           {/* Product Management Section */}
-          <section className="max-w-6xl mx-auto w-full px-2 md:px-0">
+          <section className="max-w-5xl mx-auto w-full px-2 md:px-0">
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-16">
               {/* Section Header */}
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 mb-6">
@@ -822,31 +788,51 @@ const SellerDashboard = () => {
                 </div>
               </div>
             </div>
-            {/* Floating Add Product Button */}
-            <button
-              onClick={handleAddProduct}
-              className="fixed bottom-8 right-8 z-30 bg-red-600 hover:bg-black text-white rounded-full shadow-lg p-5 flex items-center gap-2 text-lg font-bold transition-all duration-200 shadow-red-300 hover:scale-110"
-            >
-              <Plus className="w-6 h-6" />
-              <span className="hidden md:inline">Tambah Produk</span>
-            </button>
+            {/* Floating Action Buttons */}
+            <div className="fixed bottom-8 right-8 z-30 flex flex-col gap-4">
+              <button
+                onClick={() => navigate('/seller/chat')}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-4 flex items-center gap-2 text-sm font-bold transition-all duration-200 shadow-blue-300 hover:scale-110"
+              >
+                <span className="text-lg">💬</span>
+                <span className="hidden md:inline">Chat</span>
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="bg-red-600 hover:bg-black text-white rounded-full shadow-lg p-5 flex items-center gap-2 text-lg font-bold transition-all duration-200 shadow-red-300 hover:scale-110"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="hidden md:inline">Tambah Produk</span>
+              </button>
+            </div>
           </section>
         </main>
       </div>
 
       {/* Modals */}
-      <ProductModal show={showProductModal} onClose={() => setShowProductModal(false)} onSave={() => { setShowProductModal(false); fetchStoreAndProducts(); setNewCategoryId(null); }} product={editProduct} tokoId={store?.idToko} onCategoryAdded={cat => {
-        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
-          setCategories(res.data.content || []);
-        });
-      }} newCategoryId={newCategoryId} />
+      <ProductModal 
+        show={showProductModal} 
+        onClose={() => setShowProductModal(false)} 
+        onSave={() => { 
+          setShowProductModal(false); 
+          fetchStoreAndProducts(user, currentPage, searchTerm, false); 
+          setNewCategoryId(null); 
+        }} 
+        product={editProduct} 
+        tokoId={store?.idToko} 
+        onCategoryAdded={cat => {
+          // Kategori sudah ditambahkan ke state melalui CategoryModal onSave
+          // Tidak perlu refresh lagi di sini
+        }} 
+        newCategoryId={newCategoryId} 
+      />
       <StoreModal show={showStoreModal} onClose={() => setShowStoreModal(false)} onSave={() => { setShowStoreModal(false); fetchStoreAndProducts(); }} store={store} />
-      <CategoryModal show={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSave={cat => {
+      <CategoryModal show={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSave={async cat => {
+        // Hanya tutup CategoryModal dan update kategori baru
         setShowCategoryModal(false);
         setNewCategoryId(cat.idCategory);
-        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
-          setCategories(res.data.content || []);
-        });
+        await refreshCategories();
+        // Jangan pernah setShowProductModal(false) atau setEditProduct(null) di sini!
       }} />
     </div>
   );
