@@ -68,12 +68,6 @@ public class WishlistService {
                 .collect(Collectors.toList());
     }
 
-    public WishlistResponseDTO getWishlistById(Integer id) {
-        WishlistEntity wishlist = wishlistRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
-        return convertToResponseDTO(wishlist);
-    }
-
     public WishlistDTO createWishlist() {
         WishlistEntity wishlist = new WishlistEntity();
         UserEntity user = getCurrentUser();
@@ -84,7 +78,6 @@ public class WishlistService {
     }
 
     public WishlistResponseDTO getWishlistByUserId(Integer userId) {
-        // Cari wishlist berdasarkan userId
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));;
         WishlistEntity wishlist = wishlistRepository.findByUserId(user)
