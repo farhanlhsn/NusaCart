@@ -361,6 +361,25 @@ public class ProductService {
 
         
         if (productUpdateDTO.getImageUrls() != null) {
+            // Get old image URLs before updating
+            List<String> oldImageUrls = existingProduct.getImageUrls();
+            List<String> newImageUrls = productUpdateDTO.getImageUrls();
+            
+            // Find images that are no longer used (in old but not in new)
+            if (oldImageUrls != null) {
+                for (String oldImageUrl : oldImageUrls) {
+                    if (newImageUrls == null || !newImageUrls.contains(oldImageUrl)) {
+                        // This image is no longer used, delete it
+                        try {
+                            imageUploadService.deleteImage(oldImageUrl);
+                            log.info("Deleted unused image: {}", oldImageUrl);
+                        } catch (Exception e) {
+                            log.warn("Failed to delete unused image {}: {}", oldImageUrl, e.getMessage());
+                        }
+                    }
+                }
+            }
+            
             existingProduct.setImageUrls(productUpdateDTO.getImageUrls());
         }
         

@@ -290,8 +290,19 @@ public class ProductController {
                     }
                 }
                 
-                // Set new image URLs
-                productUpdateDTO.setImageUrls(newImageUrls);
+                // Combine existing images with new images
+                List<String> allImageUrls = new ArrayList<>();
+                
+                // Add existing images if provided
+                if (productUpdateDTO.getExistingImageUrls() != null) {
+                    allImageUrls.addAll(productUpdateDTO.getExistingImageUrls());
+                }
+                
+                // Add new images
+                allImageUrls.addAll(newImageUrls);
+                
+                // Set combined image URLs
+                productUpdateDTO.setImageUrls(allImageUrls);
                 
                 try {
                     // Update product in database
