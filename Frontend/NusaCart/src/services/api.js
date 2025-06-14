@@ -271,14 +271,14 @@ export const addressAPI = {
 // WISHLIST API ENDPOINTS
 // ========================
 export const wishlistAPI = {
-  getAll: () => api.get('/api/wishlist'),
+  getAll: () => api.get('/api/wishlist'), // Gets current user's wishlist
   create: (data) => api.post('/api/wishlist', data),
   getById: (id) => api.get(`/api/wishlist/${id}`),
   getByUserId: (userId) => api.get(`/api/wishlist/user/${userId}`),
   update: (id, data) => api.put(`/api/wishlist/${id}`, data),
   delete: (id) => api.delete(`/api/wishlist/${id}`),
-  addProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/add/${productId}`),
-  removeProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/remove/${productId}`),
+  addProduct: (productId) => api.post(`/api/wishlist/${productId}`),
+  removeProduct: (productId) => api.delete(`/api/wishlist/${productId}`),
 };
 
 // ========================
