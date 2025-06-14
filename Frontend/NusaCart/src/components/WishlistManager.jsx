@@ -130,11 +130,12 @@ const WishlistManager = () => {
 
   const createReview = async (reviewData) => {
     try {
-      await reviewAPI.create(reviewData);
+      const { productId, ...reviewPayload } = reviewData;
+      await reviewAPI.create(productId, reviewPayload);
       setSuccess('Review created successfully!');
       // Reload reviews for the product
-      if (reviewData.productId) {
-        loadProductReviews(reviewData.productId);
+      if (productId) {
+        loadProductReviews(productId);
       }
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {

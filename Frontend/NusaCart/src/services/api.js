@@ -412,7 +412,7 @@ export const discountAPI = {
 // ========================
 export const reviewAPI = {
   getByProduct: (productId) => api.get(`/api/reviews/product/${productId}`),
-  create: (data) => api.post('/api/reviews', data),
+  create: (productId, data) => api.post(`/api/reviews/product/${productId}`, data),
   update: (reviewId, data) => api.put(`/api/reviews/${encodeURIComponent(reviewId)}`, data),
 };
 

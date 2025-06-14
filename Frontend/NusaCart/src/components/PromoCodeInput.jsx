@@ -23,12 +23,13 @@ const PromoCodeInput = ({ onDiscountApplied }) => {
     try {
       const discount = await validatePromoCode(promoCode.trim());
       // Auto-apply if validation is successful and discount is valid
-      if (discount && discount.valid) {
-        applyDiscount(discount);
+      if (discount && discount.data && discount.data.valid) {
+        const discountData = discount.data;
+        applyDiscount(discountData);
         setPromoCode('');
         setShowInput(false);
         if (onDiscountApplied) {
-          onDiscountApplied(discount);
+          onDiscountApplied(discountData);
         }
       }
     } catch (error) {

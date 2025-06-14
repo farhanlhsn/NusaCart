@@ -4,7 +4,9 @@ import useProductStore from '../stores/productStore';
 import useCartStore from '../stores/cartStore';
 import useAuthStore from '../stores/authStore';
 import useWishlistStore from '../stores/wishlistStore';
-import ProductReviews from './ProductReviews';
+import useReviewStore from '../stores/reviewStore';
+import ReviewSection from './ReviewSection';
+import StarRating from './StarRating';
 import ChatButton from './ChatButton';
 
 const ProductDetail = () => {
@@ -12,7 +14,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [showReviews, setShowReviews] = useState(false);
+  const [reviewsUpdated, setReviewsUpdated] = useState(false);
   
   const { 
     currentProduct, 
@@ -31,15 +33,47 @@ const ProductDetail = () => {
     loading: wishlistLoading 
   } = useWishlistStore();
   
-  // Mock data for reviews
-  const [reviews, setReviews] = useState([]);
-  const [averageRating, setAverageRating] = useState(0);
+  const { 
+    getReviewsByProduct, 
+    getAverageRating,
+    fetchReviewsByProduct,
+    forceRefreshProductReviews
+  } = useReviewStore();
 
   useEffect(() => {
-    if (id) {
-      fetchProductById(parseInt(id));
+    // Debug logging untuk development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ProductDetail - URL id parameter:', id);
     }
-  }, [id, fetchProductById]);
+    
+    // Validate id parameter
+    if (!id) {
+      console.error('ProductDetail - No id parameter found in URL');
+      navigate('/products', { replace: true });
+      return;
+    }
+    
+    const numericId = parseInt(id);
+    if (isNaN(numericId) || numericId <= 0) {
+      console.error('ProductDetail - Invalid id parameter:', id);
+      navigate('/products', { replace: true });
+      return;
+    }
+    
+    // Debug logging untuk development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ProductDetail - Fetching product with valid id:', numericId);
+    }
+    
+    // Fetch data dengan promise untuk handling error yang lebih baik
+    Promise.all([
+      fetchProductById(numericId),
+      fetchReviewsByProduct(numericId)
+    ]).catch(error => {
+      console.error('ProductDetail - Error fetching data:', error);
+      // Error sudah dihandle di store, tidak perlu action tambahan
+    });
+  }, [id, fetchProductById, fetchReviewsByProduct, navigate]);
 
   // Load user's wishlist when component mounts
   useEffect(() => {
@@ -47,6 +81,23 @@ const ProductDetail = () => {
       fetchWishlist(user.userId);
     }
   }, [user?.userId, fetchWishlist]);
+
+  // Get reviews data from store (moved up to avoid initialization error)
+  const numericId = parseInt(id);
+  const reviews = (id && !isNaN(numericId)) ? getReviewsByProduct(numericId) || [] : [];
+  const averageRating = (id && !isNaN(numericId)) ? getAverageRating(numericId) || 0 : 0;
+
+  // Watch for review changes to trigger update animation
+  useEffect(() => {
+    if (reviews && reviews.length > 0) {
+      setReviewsUpdated(true);
+      const timer = setTimeout(() => {
+        setReviewsUpdated(false);
+      }, 1000); // Animation lasts 1 second
+      
+      return () => clearTimeout(timer);
+    }
+  }, [reviews?.length, averageRating]); // Watch for changes in review count and rating with optional chaining
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -84,27 +135,6 @@ const ProductDetail = () => {
       style: 'currency',
       currency: 'IDR'
     }).format(price);
-  };
-
-  const renderStars = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={i} className="text-yellow-400">★</span>);
-    }
-
-    if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400">☆</span>);
-    }
-
-    const remainingStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < remainingStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300">☆</span>);
-    }
-
-    return stars;
   };
 
   if (loading) {
@@ -194,10 +224,12 @@ const ProductDetail = () => {
             </h1>
             
             <div className="flex items-center space-x-4 mb-4">
-              <div className="flex items-center space-x-1">
-                {renderStars(averageRating)}
+              <div className={`flex items-center space-x-1 transition-all duration-500 ${
+                reviewsUpdated ? 'scale-105 text-green-600' : ''
+              }`}>
+                <StarRating rating={averageRating} showNumber={true} />
                 <span className="text-gray-600 ml-2">
-                  ({reviews.length} reviews)
+                  ({reviews?.length || 0} review{(reviews?.length || 0) !== 1 ? 's' : ''})
                 </span>
               </div>
               
@@ -309,27 +341,7 @@ const ProductDetail = () => {
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-12 border-t pt-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Customer Reviews ({reviews.length})
-          </h2>
-          <button
-            onClick={() => setShowReviews(!showReviews)}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            {showReviews ? 'Hide Reviews' : 'Show Reviews'}
-          </button>
-        </div>
-
-        {showReviews && (
-          <ProductReviews 
-            productId={parseInt(id)}
-            reviews={reviews}
-            averageRating={averageRating}
-          />
-        )}
-      </div>
+      {id && !isNaN(numericId) && <ReviewSection productId={numericId} />}
     </div>
   );
 };
