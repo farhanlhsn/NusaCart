@@ -22,6 +22,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final UserService userService;
+    private final DiscountRepository discountRepository;
 
 /*     public Map<String, String> placeOrder(OrderCreateDTO dto) {
         Integer userID = userService.getCurrentUser().getUserId();
@@ -57,7 +58,29 @@ public class OrderService {
         }).collect(Collectors.toList());
 
         order.setItems(items);
-        order.setTotal(items.stream().mapToDouble(OrderItemEntity::getPrice).sum());
+
+        //(Implementasi voucher dari discount promotion ok le pls fix)
+        // Total awal sebelum diskon 
+        double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
+
+        // Terapkan diskon jika ada promoCode
+        if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
+            DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
+                    .filter(DiscountEntity::isValid)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired promo code"));
+
+            // Terapkan diskon ke total
+            double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
+            total -= discountAmount;
+
+            // Tandai promo sebagai telah digunakan (misal kurangi usageLimit)
+            discount.setUsageLimit(discount.getUsageLimit() - 1);
+            discountRepository.save(discount);
+
+            // Simpan info discount ke OrderEntity
+            order.setDiscount(discount);
+        }
+        order.setTotal(total);
 
         orderRepository.save(order);
 

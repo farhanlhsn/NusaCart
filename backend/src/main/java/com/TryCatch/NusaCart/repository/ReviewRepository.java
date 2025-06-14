@@ -14,7 +14,7 @@ import com.TryCatch.NusaCart.entity.ProductEntity;
 public interface ReviewRepository extends JpaRepository<ReviewEntity, String> {
     
     // Cari review berdasarkan ID
-    Optional<ReviewEntity> findByReviewId(String reviewId);
+    Optional<ReviewEntity> findByReviewId(Integer reviewId);
     
     // Cari semua review dari seorang user
     List<ReviewEntity> findByUser(UserEntity user);

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import api from '../services/api';
+import { sellerAPI } from '../services/api';
+import useAuthStore from '../stores/authStore';
 
 const SellerRegistrationModal = ({ show, onClose }) => {
+    const { user, login } = useAuthStore();
     const [formData, setFormData] = useState({
         namaToko: '',
         alamatToko: '',
@@ -26,15 +28,22 @@ const SellerRegistrationModal = ({ show, onClose }) => {
         setError('');
 
         try {
-            const response = await api.post('/api/seller/register', formData);
+            console.log('Submitting seller registration:', formData);
+            const response = await sellerAPI.register(formData);
+            
+            console.log('Registration response:', response);
             
             if (response.status === 201) {
                 alert('Berhasil mendaftar sebagai seller! Anda sekarang dapat mengelola toko.');
                 
+                // Update user state with SELLER role
                 const updatedUser = {
                     ...user,
-                    role: [...(user.role || []), 'SELLER']
+                    role: Array.isArray(user.role) 
+                        ? [...user.role, 'SELLER']
+                        : [...(user.role || []), 'SELLER']
                 };
+                
                 login({ user: updatedUser });
                 
                 onClose();
@@ -42,7 +51,11 @@ const SellerRegistrationModal = ({ show, onClose }) => {
             }
         } catch (err) {
             console.error('Seller registration error:', err);
-            setError(err.response?.data?.message || 'Gagal mendaftar sebagai seller');
+            console.error('Error response:', err.response);
+            const errorMessage = err.response?.data?.message || 
+                                err.response?.data?.error || 
+                                'Gagal mendaftar sebagai seller';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -62,15 +75,68 @@ const SellerRegistrationModal = ({ show, onClose }) => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <input type="text" name="namaToko" value={formData.namaToko} onChange={handleChange} placeholder="Nama Toko *" className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" required />
-                    <textarea name="alamatToko" value={formData.alamatToko} onChange={handleChange} placeholder="Alamat Toko *" className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" rows={2} required />
-                    <input type="tel" name="noTelpToko" value={formData.noTelpToko} onChange={handleChange} placeholder="Nomor Telepon Toko *" className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" required />
-                    <input type="email" name="emailToko" value={formData.emailToko} onChange={handleChange} placeholder="Email Toko *" className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" required />
-                    <textarea name="descriptionToko" value={formData.descriptionToko} onChange={handleChange} placeholder="Deskripsi Toko *" className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" rows={3} required />
+                    <input 
+                        type="text" 
+                        name="namaToko" 
+                        value={formData.namaToko} 
+                        onChange={handleChange} 
+                        placeholder="Nama Toko *" 
+                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" 
+                        required 
+                    />
+                    <textarea 
+                        name="alamatToko" 
+                        value={formData.alamatToko} 
+                        onChange={handleChange} 
+                        placeholder="Alamat Toko *" 
+                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" 
+                        rows={2} 
+                        required 
+                    />
+                    <input 
+                        type="tel" 
+                        name="noTelpToko" 
+                        value={formData.noTelpToko} 
+                        onChange={handleChange} 
+                        placeholder="Nomor Telepon Toko (10-13 digit) *" 
+                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" 
+                        pattern="[0-9]{10,13}"
+                        title="Nomor telepon harus 10-13 digit angka"
+                        required 
+                    />
+                    <input 
+                        type="email" 
+                        name="emailToko" 
+                        value={formData.emailToko} 
+                        onChange={handleChange} 
+                        placeholder="Email Toko *" 
+                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" 
+                        required 
+                    />
+                    <textarea 
+                        name="descriptionToko" 
+                        value={formData.descriptionToko} 
+                        onChange={handleChange} 
+                        placeholder="Deskripsi Toko *" 
+                        className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200" 
+                        rows={3} 
+                        required 
+                    />
 
                     <div className="flex gap-3 mt-6">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50" disabled={loading}>Batal</button>
-                        <button type="submit" className="flex-1 py-3 px-4 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50" disabled={loading}>
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium hover:bg-gray-50" 
+                            disabled={loading}
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            type="submit" 
+                            className="flex-1 py-3 px-4 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50" 
+                            disabled={loading}
+                        >
                             {loading ? 'Mendaftar...' : 'Daftar'}
                         </button>
                     </div>

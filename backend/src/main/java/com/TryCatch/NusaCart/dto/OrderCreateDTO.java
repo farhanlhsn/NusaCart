@@ -12,9 +12,7 @@ public class OrderCreateDTO {
     private String address;
 
     private List<OrderItemDTO> items;
-
     private Integer addressId;
-    
     private Integer paymentMethodId;
-
+    private String promoCode;
 }

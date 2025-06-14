@@ -2,7 +2,10 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://localhost:6060',
-  withCredentials: true  // Pastikan cookies dikirim
+  withCredentials: true,  // Pastikan cookies dikirim
+  timeout: 60000, // 60 detik timeout untuk upload file
+  maxContentLength: 100 * 1024 * 1024, // 100MB max content length
+  maxBodyLength: 100 * 1024 * 1024 // 100MB max body length
 });
 
 // Request interceptor - HAPUS Authorization header logic
@@ -31,7 +34,7 @@ const processQueue = (error) => {
   failedQueue = [];
 };
 
-// Response interceptor - Update untuk handle cookie-based refresh
+// Response interceptor - Improved untuk handle cookie-based refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -44,34 +47,145 @@ api.interceptors.response.use(
 
     console.log('[Response Interceptor] Error status:', error.response?.status);
     console.log('[Response Interceptor] Original request URL:', originalRequest.url);
+    console.log('[Response Interceptor] Error message:', error.response?.data?.message);
 
+    // Handle 401 Unauthorized errors (token expired or invalid)
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Skip refresh for auth endpoints to avoid infinite loops
+      if (originalRequest.url?.includes('/api/auth/login') || 
+          originalRequest.url?.includes('/api/auth/register') ||
+          originalRequest.url?.includes('/api/auth/refresh')) {
+        console.log('[Response Interceptor] Skipping refresh for auth endpoint');
+        return Promise.reject(error);
+      }
+
+      // If already refreshing, queue the request
       if (isRefreshing) {
+        console.log('[Response Interceptor] Already refreshing, queueing request');
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
-        .then(() => api(originalRequest))
-        .catch(err => Promise.reject(err));
+        .then(() => {
+          console.log('[Response Interceptor] Retrying queued request');
+          return api(originalRequest);
+        })
+        .catch(err => {
+          console.error('[Response Interceptor] Queued request failed:', err);
+          return Promise.reject(err);
+        });
       }
 
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        await axios.post('http://localhost:6060/api/auth/refresh', {}, { withCredentials: true });
+        console.log('[Response Interceptor] Attempting token refresh...');
+        const refreshResponse = await axios.post('http://localhost:6060/api/auth/refresh', {}, { 
+          withCredentials: true,
+          timeout: 10000 // 10 second timeout
+        });
+        
+        console.log('[Response Interceptor] Token refresh successful:', refreshResponse.data);
         processQueue(null);
+        
+        // Retry the original request
+        console.log('[Response Interceptor] Retrying original request');
         return api(originalRequest);
+        
       } catch (refreshError) {
+        console.error('[Response Interceptor] Token refresh failed:', refreshError.response?.data || refreshError.message);
         processQueue(refreshError);
-        window.location.href = '/login';
+        
+        // Clear any auth state and redirect to login
+        if (typeof window !== 'undefined') {
+          // Clear any stored auth state
+          localStorage.removeItem('userLoginStatus');
+          sessionStorage.clear();
+          
+          // Show user-friendly message
+          if (refreshError.response?.status === 401) {
+            console.log('[Response Interceptor] Session expired, redirecting to login');
+            alert('Sesi Anda telah berakhir. Silakan login kembali.');
+          } else {
+            console.log('[Response Interceptor] Refresh failed, redirecting to login');
+            alert('Terjadi masalah dengan autentikasi. Silakan login kembali.');
+          }
+          
+          // Redirect to login
+          window.location.href = '/login';
+        }
+        
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
+
+    // Handle other errors
+    if (error.response?.status === 403) {
+      console.warn('[Response Interceptor] Access forbidden (403)');
+      if (typeof window !== 'undefined') {
+        alert('Anda tidak memiliki akses untuk melakukan tindakan ini.');
+      }
+    }
+
     return Promise.reject(error);
   }
 );
+
+// Function to proactively refresh token before it expires
+export const proactiveTokenRefresh = async () => {
+  if (isRefreshing) {
+    console.log('[Proactive Refresh] Already refreshing, skipping');
+    return;
+  }
+
+  try {
+    console.log('[Proactive Refresh] Attempting proactive token refresh...');
+    isRefreshing = true;
+    
+    const response = await axios.post('http://localhost:6060/api/auth/refresh', {}, { 
+      withCredentials: true,
+      timeout: 10000
+    });
+    
+    console.log('[Proactive Refresh] Proactive refresh successful:', response.data);
+    return response.data;
+    
+  } catch (error) {
+    console.error('[Proactive Refresh] Proactive refresh failed:', error.response?.data || error.message);
+    
+    // If proactive refresh fails, user will be logged out on next API call
+    if (error.response?.status === 401) {
+      console.log('[Proactive Refresh] Refresh token expired, user will be logged out on next request');
+    }
+    
+    throw error;
+  } finally {
+    isRefreshing = false;
+  }
+};
+
+// Set up proactive token refresh every 10 minutes
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    // Only refresh if user seems to be active (check if any auth store exists)
+    const authState = localStorage.getItem('userLoginStatus');
+    if (authState) {
+      try {
+        const parsed = JSON.parse(authState);
+        if (parsed.state?.isLoggedIn) {
+          console.log('[Proactive Refresh] User is logged in, attempting proactive refresh');
+          proactiveTokenRefresh().catch(err => {
+            console.log('[Proactive Refresh] Proactive refresh failed, will handle on next API call');
+          });
+        }
+      } catch (e) {
+        console.log('[Proactive Refresh] Could not parse auth state');
+      }
+    }
+  }, 10 * 60 * 1000); // 10 minutes
+}
 
 // ========================
 // AUTH API ENDPOINTS
@@ -89,6 +203,7 @@ export const authAPI = {
 // USER API ENDPOINTS
 // ========================
 export const userAPI = {
+  getById: (userId) => api.get(`/api/auth/users/${userId}`),
   getProfile: () => api.get('/api/user/profile'),
   updateProfile: (data) => api.put('/api/user/update_profile', data),
 };
@@ -125,6 +240,9 @@ export const categoryAPI = {
 // PRODUCT API ENDPOINTS
 // ========================
 export const productAPI = {
+  getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
+
   // Get all products with comprehensive filtering
   getAll: (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -265,14 +383,14 @@ export const addressAPI = {
 // WISHLIST API ENDPOINTS
 // ========================
 export const wishlistAPI = {
-  getAll: () => api.get('/api/wishlist'),
+  getAll: () => api.get('/api/wishlist'), // Gets current user's wishlist
   create: (data) => api.post('/api/wishlist', data),
   getById: (id) => api.get(`/api/wishlist/${id}`),
   getByUserId: (userId) => api.get(`/api/wishlist/user/${userId}`),
   update: (id, data) => api.put(`/api/wishlist/${id}`, data),
   delete: (id) => api.delete(`/api/wishlist/${id}`),
-  addProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/add/${productId}`),
-  removeProduct: (wishlistId, productId) => api.post(`/api/wishlist/${wishlistId}/remove/${productId}`),
+  addProduct: (productId) => api.post(`/api/wishlist/${productId}`),
+  removeProduct: (productId) => api.delete(`/api/wishlist/${productId}`),
 };
 
 // ========================
@@ -329,6 +447,23 @@ export const imageAPI = {
   upload: (formData) => api.post('/api/images/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+};
+
+// ========================
+// CHAT API ENDPOINTS (Using real backend endpoints)
+// ========================
+export const chatAPI = {
+  // Send a message (real backend endpoint)
+  sendMessage: (data) => api.post('/api/chat/send', data),
+  
+  // Get chat history between users (real backend endpoint) 
+  getChatHistory: (receiverId) => api.get(`/api/chat/history?receiverId=${receiverId}`),
+  
+  // Report chat (real backend endpoint)
+  reportChat: (data) => api.post('/api/chat/report', data),
+  
+  // Get store info for chat
+  getStoreInfo: (storeId) => api.get(`/api/toko/${storeId}`),
 };
 
 export default api;

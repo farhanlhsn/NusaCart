@@ -220,12 +220,27 @@ public class ProductController {
             
             // Set image URLs to DTO
             productCreateDTO.setImageUrls(imageUrls);
-            if (!imageUrls.isEmpty()) {
-    
-            }
             
-            ProductDTO createdProduct = productService.createProduct(productCreateDTO);
-            return new ResponseEntity<>(createdProduct, HttpStatus.CREATED);
+            try {
+                // Create product in database
+                ProductDTO createdProduct = productService.createProduct(productCreateDTO);
+                return new ResponseEntity<>(createdProduct, HttpStatus.CREATED);
+                
+            } catch (Exception e) {
+                // If product creation fails, delete all uploaded images (rollback)
+                log.warn("Product creation failed, rolling back uploaded images: {}", e.getMessage());
+                for (String uploadedUrl : imageUrls) {
+                    boolean deleted = imageUploadService.deleteImage(uploadedUrl);
+                    if (deleted) {
+                        log.info("Successfully deleted image during rollback: {}", uploadedUrl);
+                    } else {
+                        log.error("Failed to delete image during rollback: {}", uploadedUrl);
+                    }
+                }
+                
+                // Re-throw the exception to be handled by outer catch block
+                throw e;
+            }
             
         } catch (Exception e) {
             log.error("Error creating product: {}", e.getMessage());
@@ -275,15 +290,45 @@ public class ProductController {
                     }
                 }
                 
-                // Set new image URLs
-                productUpdateDTO.setImageUrls(newImageUrls);
-                if (!newImageUrls.isEmpty()) {
-        
+                // Combine existing images with new images
+                List<String> allImageUrls = new ArrayList<>();
+                
+                // Add existing images if provided
+                if (productUpdateDTO.getExistingImageUrls() != null) {
+                    allImageUrls.addAll(productUpdateDTO.getExistingImageUrls());
                 }
+                
+                // Add new images
+                allImageUrls.addAll(newImageUrls);
+                
+                // Set combined image URLs
+                productUpdateDTO.setImageUrls(allImageUrls);
+                
+                try {
+                    // Update product in database
+                    ProductDTO updatedProduct = productService.updateProduct(productId, productUpdateDTO);
+                    return ResponseEntity.ok(updatedProduct);
+                    
+                } catch (Exception e) {
+                    // If product update fails, delete newly uploaded images (rollback)
+                    log.warn("Product update failed, rolling back newly uploaded images: {}", e.getMessage());
+                    for (String uploadedUrl : newImageUrls) {
+                        boolean deleted = imageUploadService.deleteImage(uploadedUrl);
+                        if (deleted) {
+                            log.info("Successfully deleted image during rollback: {}", uploadedUrl);
+                        } else {
+                            log.error("Failed to delete image during rollback: {}", uploadedUrl);
+                        }
+                    }
+                    
+                    // Re-throw the exception to be handled by outer catch block
+                    throw e;
+                }
+            } else {
+                // No new images, just update product data
+                ProductDTO updatedProduct = productService.updateProduct(productId, productUpdateDTO);
+                return ResponseEntity.ok(updatedProduct);
             }
-            
-            ProductDTO updatedProduct = productService.updateProduct(productId, productUpdateDTO);
-            return ResponseEntity.ok(updatedProduct);
             
         } catch (Exception e) {
             log.error("Error updating product: {}", e.getMessage());
