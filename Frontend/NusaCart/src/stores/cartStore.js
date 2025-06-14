@@ -51,7 +51,34 @@ const useCartStore = create(
         try {
           const response = await cartAPI.get();
           
-          // Transform API response to frontend format
+          // Get unique store IDs from cart items
+          const storeIds = [...new Set(response.data.map(item => item.storeId))];
+          
+          // Fetch store details for each unique store
+          const storePromises = storeIds.map(async (storeId) => {
+            try {
+              const storeResponse = await fetch(`http://localhost:6060/api/toko/${storeId}`);
+              if (storeResponse.ok) {
+                return await storeResponse.json();
+              }
+              return null;
+            } catch (error) {
+              console.error(`Error fetching store ${storeId}:`, error);
+              return null;
+            }
+          });
+          
+          const storeResults = await Promise.all(storePromises);
+          const storeMap = {};
+          
+          // Create a map of store data
+          storeResults.forEach((storeData, index) => {
+            if (storeData) {
+              storeMap[storeIds[index]] = storeData;
+            }
+          });
+          
+          // Transform API response to frontend format with store data
           const cartItems = response.data.map(item => ({
             id: item.id, // This is cart item ID
             productId: item.productId, // This is product ID
@@ -63,7 +90,8 @@ const useCartStore = create(
               id: item.storeId,
               idToko: item.storeId,
               name: item.storeName,
-              location: item.storeLocation
+              location: item.storeLocation,
+              profilePictureToko: storeMap[item.storeId]?.profilePictureToko || null
             },
             image: item.imageUrl 
               ? (item.imageUrl.startsWith('http') 

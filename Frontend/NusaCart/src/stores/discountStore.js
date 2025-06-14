@@ -20,14 +20,15 @@ const useDiscountStore = create((set, get) => ({
     set({ validating: true, error: null, discountValidation: null });
     try {
       const response = await discountAPI.getByCode(promoCode);
-      const discount = response.data;
+      // Backend returns: { message: "...", data: DiscountDTO }
+      const discount = response.data.data;
       
       set({
         discountValidation: discount,
         validating: false
       });
       
-      return discount;
+      return { data: discount }; // Return in consistent format
     } catch (error) {
       set({ 
         error: error.response?.data?.message || 'Invalid promo code',

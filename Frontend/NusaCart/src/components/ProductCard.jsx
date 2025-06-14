@@ -1,26 +1,58 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductRating from './ProductRating';
 import ChatButton from './ChatButton';
 
 const ProductCard = ({ product }) => {
     const navigate = useNavigate();
+
+    // Validate product data
+    if (!product || !product.productId) {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('ProductCard: Invalid product data', product);
+        }
+        return null;
+    }
+
+    const handleProductClick = () => {
+        if (product.productId) {
+            navigate(`/product/${product.productId}`);
+        } else {
+            console.error('ProductCard: Missing productId for navigation');
+        }
+    };
 
     const originalPrice = product.price * 1.35;
     const discount = Math.round(((originalPrice - product.price) / originalPrice) * 100);
 
     // Ambil gambar produk: imageUrl (string) atau imageUrls[0] (array)
     let imageSrc = null;
+    
+    // Debug log untuk melihat data gambar (hanya untuk produk pertama)
+    if (process.env.NODE_ENV === 'development' && product.productId && product.productId <= 3) {
+        console.log(`ProductCard ${product.productId}:`, {
+            imageUrl: product.imageUrl,
+            imageUrls: product.imageUrls,
+            hasImageUrls: product.imageUrls && product.imageUrls.length > 0
+        });
+    }
+    
     if (product.imageUrl) {
-        imageSrc = `http://localhost:6060${product.imageUrl}`;
+        imageSrc = product.imageUrl.startsWith('http') 
+            ? product.imageUrl 
+            : `http://localhost:6060${product.imageUrl}`;
     } else if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
-        imageSrc = product.imageUrls[0].startsWith('http')
-            ? product.imageUrls[0]
-            : `http://localhost:6060${product.imageUrls[0]}`;
+        const firstImage = product.imageUrls[0];
+        if (firstImage) {
+            imageSrc = firstImage.startsWith('http')
+                ? firstImage
+                : `http://localhost:6060${firstImage}`;
+        }
     }
 
     return (
         <div 
-            onClick={() => navigate(`/product/${product.productId}`)}
+            onClick={handleProductClick}
             className="group relative bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer flex flex-col transform hover:-translate-y-2 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
         >
             {/* Badge diskon */}
@@ -42,15 +74,27 @@ const ProductCard = ({ product }) => {
                         src={imageSrc}
                         alt={product.productName}
                         className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => {
+                            console.log(`Failed to load image: ${imageSrc}`);
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                        onLoad={() => {
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log(`Successfully loaded image: ${imageSrc}`);
+                            }
+                        }}
                     />
-                ) : (
-                    <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100">
-                        <svg className="w-14 h-14 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                )}
-                
+                ) : null}
+                <div 
+                    className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400"
+                    style={{ display: imageSrc ? 'none' : 'flex' }}
+                >
+                    <svg className="w-14 h-14 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-xs text-center px-2">Tidak ada gambar</span>
+                </div>
             </div>
             
             {/* Informasi produk */}
@@ -65,10 +109,18 @@ const ProductCard = ({ product }) => {
                             <svg className="w-4 h-4 mr-1 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                             </svg>
-                            <span className="truncate">{product.tokoName || 'Toko Populer'}</span>
+                            <button 
+                                className="truncate hover:text-red-600 transition-colors text-left"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/toko/${product.idToko}`);
+                                }}
+                            >
+                                {product.tokoName || 'Toko Populer'}
+                            </button>
                         </div>
                         <ChatButton
-                            storeId={product.tokoId}
+                            storeId={product.idToko}
                             storeName={product.tokoName}
                             variant="ghost"
                             size="small"
@@ -93,21 +145,11 @@ const ProductCard = ({ product }) => {
                     </div>
                     
                     <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                        <div className="flex items-center">
-                            <div className="flex mr-2">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <svg 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= 4 ? 'text-yellow-400' : 'text-gray-300'}`} 
-                                        fill="currentColor" 
-                                        viewBox="0 0 20 20"
-                                    >
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                    </svg>
-                                ))}
-                            </div>
-                            <span>4.8</span>
-                        </div>
+                        <ProductRating 
+                            productId={product.productId} 
+                            showReviewCount={true}
+                            size="sm"
+                        />
                         <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{product.terjual || 0} terjual</span>
                     </div>
                     

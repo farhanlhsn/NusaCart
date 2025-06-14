@@ -22,8 +22,10 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final PaymentMethodRepository paymentMethodRepository;
-    private final UserService userService;
     private final DiscountRepository discountRepository;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final UserService userService;
 
     public Map<String, String> placeOrder(OrderCreateDTO dto) {
         Integer userID = userService.getCurrentUser().getUserId();
@@ -49,22 +51,25 @@ public class OrderService {
         List<OrderItemEntity> items = dto.getItems().stream().map(itemDto -> {
             ProductEntity product = productRepository.findById(itemDto.getProductId()).orElseThrow();
 
+            if (product.getStock() < itemDto.getQuantity()) {
+                throw new IllegalArgumentException("Not enough stock for product: " + product.getProductName());
+            }
+
+            product.setStock(product.getStock() - itemDto.getQuantity());
+            productRepository.save(product);
+
             OrderItemEntity item = new OrderItemEntity();
             item.setProduct(product);
             item.setQuantity(itemDto.getQuantity());
             item.setPrice(product.getPrice() * itemDto.getQuantity());
             item.setOrder(order);
-
             return item;
         }).collect(Collectors.toList());
 
         order.setItems(items);
 
-        //(Implementasi voucher dari discount promotion ok le pls fix)
-        // Total awal sebelum diskon 
         double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
-
-        // Terapkan diskon jika ada promoCode
+        // promo code logic
         if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
             DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
                     .filter(DiscountEntity::isValid)
@@ -73,20 +78,24 @@ public class OrderService {
             if (discount.getUsageLimit() <= 0) {
                 throw new IllegalArgumentException("Promo code usage limit reached");
             }
-            // Terapkan diskon ke total
             double discountAmount = total * (discount.getDiscountPercentage() / 100.0);
             total -= discountAmount;
 
-            // Tandai promo sebagai telah digunakan (misal kurangi usageLimit)
             discount.setUsageLimit(discount.getUsageLimit() - 1);
             discountRepository.save(discount);
 
-            // Simpan info discount ke OrderEntity
             order.setDiscount(discount);
         }
+        //Cart deletion logic
         order.setTotal(total);
-
         orderRepository.save(order);        
+        CartEntity userCart = cartRepository.findByUser(user).orElse(null);
+        if (userCart != null) {
+        for (OrderItemEntity item : items) {
+            cartItemRepository.deleteByCartAndProduct(userCart, item.getProduct());
+        }
+    }
+
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "Order placed successfully");
@@ -105,16 +114,15 @@ public class OrderService {
 
             AddressEntity addr = order.getAddress();
             dto.setAddress(String.format("%s, %s, %s, %s, %s, %s (%s)",
-                addr.getJalan(),
-                addr.getKelurahan(),
-                addr.getKecamatan(),
-                addr.getKotaKabupaten(),
-                addr.getProvinsi(),
-                addr.getKodePos(),
-                addr.getPhoneNumber()
+                    addr.getJalan(),
+                    addr.getKelurahan(),
+                    addr.getKecamatan(),
+                    addr.getKotaKabupaten(),
+                    addr.getProvinsi(),
+                    addr.getKodePos(),
+                    addr.getPhoneNumber()
             ));
-            
-            // Set payment method information
+
             PaymentMethodDTO paymentMethodDTO = PaymentMethodDTO.builder()
                     .id(order.getPaymentMethod().getId())
                     .name(order.getPaymentMethod().getName())
@@ -129,6 +137,7 @@ public class OrderService {
 
             List<OrderItemResponseDTO> itemDTOs = order.getItems().stream().map(item -> {
                 OrderItemResponseDTO itemDto = new OrderItemResponseDTO();
+                itemDto.setProductId(item.getProduct().getProductId());
                 itemDto.setProductName(item.getProduct().getProductName());
                 itemDto.setQuantity(item.getQuantity());
                 itemDto.setPrice(item.getPrice());

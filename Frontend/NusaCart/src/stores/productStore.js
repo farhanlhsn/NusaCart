@@ -38,17 +38,20 @@ const useProductStore = create((set, get) => ({
       const response = await productAPI.getAll(validPage, validSize);
       const data = response.data;
       
+      const products = data.data || data.content || [];
+      
       set({
-        products: data.data || data.content || [],
+        products: products,
         pagination: {
           currentPage: data.currentPage || validPage,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || validSize
         },
         loading: false
       });
     } catch (error) {
+      console.error('ProductStore - Error fetching products:', error);
       set({ 
         error: error.response?.data?.message || 'Failed to fetch products',
         loading: false 
@@ -81,17 +84,20 @@ const useProductStore = create((set, get) => ({
       const response = await productAPI.getAllWithFilters(params.toString());
       const data = response.data;
       
+      const products = data.data || data.content || [];
+      
       set({
-        products: data.data || data.content || [],
+        products: products,
         pagination: {
           currentPage: data.currentPage || validPage,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || validSize
         },
         loading: false
       });
     } catch (error) {
+      console.error('ProductStore - Error fetching products with filters:', error);
       set({ 
         error: error.response?.data?.message || 'Failed to fetch products with filters',
         loading: false 
@@ -101,18 +107,33 @@ const useProductStore = create((set, get) => ({
 
   // Fetch product by ID
   fetchProductById: async (id) => {
+    // Validate id parameter
+    if (!id || isNaN(parseInt(id))) {
+      const error = `Invalid product ID: ${id}`;
+      console.error('ProductStore -', error);
+      set({ 
+        error,
+        loading: false,
+        currentProduct: null 
+      });
+      throw new Error(error);
+    }
+    
     set({ loading: true, error: null });
     try {
       const response = await productAPI.getById(id);
+      
       set({
         currentProduct: response.data,
         loading: false
       });
       return response.data;
     } catch (error) {
+      console.error('ProductStore - Error fetching product:', error);
       set({ 
         error: error.response?.data?.message || 'Failed to fetch product',
-        loading: false 
+        loading: false,
+        currentProduct: null
       });
       throw error;
     }
@@ -130,7 +151,7 @@ const useProductStore = create((set, get) => ({
         pagination: {
           currentPage: data.currentPage || page,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || size
         },
         loading: false
