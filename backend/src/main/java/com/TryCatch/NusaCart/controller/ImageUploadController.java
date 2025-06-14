@@ -159,18 +159,31 @@ public class ImageUploadController {
                     uploadedUrls.add(uploadResult.get("imageUrl"));
                 } else {
                     errors.add(uploadResult.get("message"));
+                    // If any upload fails, rollback all successfully uploaded images
+                    log.warn("Image upload failed, rolling back {} uploaded images", uploadedUrls.size());
+                    for (String uploadedUrl : uploadedUrls) {
+                        boolean deleted = imageUploadService.deleteImage(uploadedUrl);
+                        if (deleted) {
+                            log.info("Successfully deleted image during rollback: {}", uploadedUrl);
+                        } else {
+                            log.error("Failed to delete image during rollback: {}", uploadedUrl);
+                        }
+                    }
+                    
+                    return new ResponseEntity<>(
+                        Map.of("status", "error", "message", "Gagal mengupload gambar: " + uploadResult.get("message")), 
+                        HttpStatus.BAD_REQUEST
+                    );
                 }
             }
             
             Map<String, Object> response = Map.of(
-                "status", errors.isEmpty() ? "success" : "partial_success",
-                "message", errors.isEmpty() ? "Semua gambar berhasil diupload" : "Beberapa gambar gagal diupload",
-                "imageUrls", uploadedUrls,
-                "errors", errors
+                "status", "success",
+                "message", "Semua gambar berhasil diupload",
+                "imageUrls", uploadedUrls
             );
             
-            HttpStatus status = errors.isEmpty() ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT;
-            return new ResponseEntity<>(response, status);
+            return new ResponseEntity<>(response, HttpStatus.OK);
             
         } catch (Exception e) {
             log.error("Error uploading multiple product images: {}", e.getMessage());

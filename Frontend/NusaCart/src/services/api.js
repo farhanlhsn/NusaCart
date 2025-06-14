@@ -125,6 +125,9 @@ export const categoryAPI = {
 // PRODUCT API ENDPOINTS
 // ========================
 export const productAPI = {
+  getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
+
   // Get all products with comprehensive filtering
   getAll: (params = {}) => {
     const queryParams = new URLSearchParams();
