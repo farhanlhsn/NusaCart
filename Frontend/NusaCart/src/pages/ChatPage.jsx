@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { 
     Search, 
     Send, 
@@ -16,20 +16,58 @@ import {
     User
 } from "lucide-react";
 import ReportChat from '../components/ReportChat';
+import ChatInput from '../components/ChatInput';
+import useChatStore from '../stores/chatStore';
+import useAuthStore from '../stores/authStore';
 
 export default function ChatPage() {
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
-    const [selectedChat, setSelectedChat] = useState(1);
-    const [message, setMessage] = useState('');
+    const [selectedChat, setSelectedChat] = useState(null);
+    // Removed message state as it's now handled by ChatInput
     const [searchQuery, setSearchQuery] = useState('');
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isMobileView, setIsMobileView] = useState(false);
     const [showChatList, setShowChatList] = useState(true);
     const [showDropdown, setShowDropdown] = useState(false);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
-
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+    const { user } = useAuthStore();
+    const {
+        conversations,
+        currentConversation,
+        messages,
+        loading,
+        error,
+        fetchConversations,
+        fetchMessages,
+        sendMessage,
+        setCurrentConversation,
+        fetchStoreInfo,
+        clearError
+    } = useChatStore();
+
+    // Load conversations when component mounts (with ref to prevent re-renders)
+    const fetchConversationsRef = useRef(fetchConversations);
+    const fetchMessagesRef = useRef(fetchMessages);
+    
+    useEffect(() => {
+        fetchConversationsRef.current = fetchConversations;
+        fetchMessagesRef.current = fetchMessages;
+    });
+
+    useEffect(() => {
+        if (user) {
+            fetchConversationsRef.current();
+        }
+    }, [user]);
+
+    // Load messages when conversation changes
+    useEffect(() => {
+        if (currentConversation?.id) {
+            fetchMessagesRef.current(currentConversation.id);
+        }
+    }, [currentConversation?.id]);
 
     const handleOpenReport = () => {
         setIsReportModalOpen(true);
@@ -42,123 +80,16 @@ export default function ChatPage() {
     const handleSubmitReport = (reportData) => {
         console.log('Report submitted:', reportData);
         // Here you would typically send the report data to your backend API
-        // Example API call:
-        // submitReport(reportData);
         alert('Laporan berhasil dikirim!');
     };
 
-    // Dummy chat data
-    const chats = [
-        {
-            id: 1,
-            name: "SHOP",
-            lastMessage: "Aktif 2 jam lalu",
-            time: "20 Jan",
-            avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-            online: true,
-            unread: 0,
-            type: "shop"
-        },
-        {
-            id: 2,
-            name: "MART",
-            lastMessage: "Terima kasih sudah berbelanja",
-            time: "03 Mar",
-            avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-            online: false,
-            unread: 2,
-            type: "shop"
-        },
-        {
-            id: 3,
-            name: "Electronics Store",
-            lastMessage: "Produk baru sudah tersedia",
-            time: "15 Feb",
-            avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
-            online: true,
-            unread: 1,
-            type: "shop"
-        },
-        {
-            id: 4,
-            name: "Fashion Outlet",
-            lastMessage: "Diskon besar-besaran minggu ini!",
-            time: "10 Feb",
-            avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b977?w=100&h=100&fit=crop&crop=face",
-            online: false,
-            unread: 0,
-            type: "shop"
-        }
-    ];
-
-    // Dummy messages data
-    const messages = [
-        {
-            id: 1,
-            chatId: 1,
-            text: "Selamat datang di toko kami! Ada yang bisa kami bantu?",
-            sender: "other",
-            time: "10:30",
-            status: "read"
-        },
-        {
-            id: 2,
-            chatId: 1,
-            text: "Halo, saya mau tanya tentang produk gaming keyboard",
-            sender: "me",
-            time: "10:32",
-            status: "read"
-        },
-        {
-            id: 3,
-            chatId: 1,
-            text: "Tentu! Kami punya beberapa pilihan gaming keyboard yang bagus. Yang mana yang Anda cari?",
-            sender: "other",
-            time: "10:33",
-            status: "read"
-        },
-        {
-            id: 4,
-            chatId: 1,
-            text: "Yang mechanical keyboard, budget sekitar 500rb",
-            sender: "me",
-            time: "10:35",
-            status: "read"
-        },
-        {
-            id: 5,
-            chatId: 1,
-            text: "Perfect! Kami ada HyperX Alloy FPS Pro dan Razer BlackWidow V3 Tenkeyless dalam range harga tersebut. Keduanya sangat recommended untuk gaming.",
-            sender: "other",
-            time: "10:36",
-            status: "read"
-        },
-        {
-            id: 6,
-            chatId: 1,
-            text: "Bisa kirim foto produknya?",
-            sender: "me",
-            time: "10:38",
-            status: "sent"
-        },
-        {
-            id: 7,
-            chatId: 2,
-            text: "Bisa kirim foto produknya?",
-            sender: "me",
-            time: "10:38",
-            status: "sent"
-        }
-    ];
-
-    const currentChat = chats.find(chat => chat.id === selectedChat);
     const currentMessages = useMemo(() => 
-        messages.filter(msg => msg.chatId === selectedChat), 
-        [selectedChat]
+        currentConversation?.id ? (messages[currentConversation.id] || []) : [],
+        [currentConversation?.id, messages]
     );
 
-    const filteredChats = chats.filter(chat => 
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredChats = conversations.filter(chat => 
+        chat.storeName.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const scrollToBottom = () => {
@@ -211,50 +142,99 @@ export default function ChatPage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showDropdown]);
 
-    const handleSendMessage = () => {
-        if (message.trim()) {
-            // In real app, this would send message via API
-            setMessage('');
-            setShouldAutoScroll(true); // Trigger scroll setelah mengirim pesan
+    const handleSendMessage = useCallback(async (messageText) => {
+        if (messageText && currentConversation) {
+            try {
+                await sendMessage(currentConversation.id, messageText);
+                setShouldAutoScroll(true);
+            } catch (error) {
+                console.error('Failed to send message:', error);
+            }
         }
-    };
+    }, [currentConversation, sendMessage]);
 
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
+    // Removed handleKeyPress as it's now handled by ChatInput
+
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        
+        // Handle time-only format from backend (e.g., "23:37")
+        if (typeof timestamp === 'string' && timestamp.match(/^\d{2}:\d{2}$/)) {
+            return timestamp; // Return as-is since it's already formatted time
         }
-    };
-
-    const formatTime = (time) => {
-        return time;
+        
+        // Handle full timestamp
+        const date = new Date(timestamp);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return timestamp; // Return original if can't parse
+        }
+        
+        const now = new Date();
+        const diffInHours = (now - date) / (1000 * 60 * 60);
+        
+        if (diffInHours < 24) {
+            return date.toLocaleTimeString('id-ID', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        } else {
+            return date.toLocaleDateString('id-ID', { 
+                day: '2-digit', 
+                month: 'short' 
+            });
+        }
     };
 
     const renderMessageStatus = (status) => {
         switch (status) {
+            case 'sending':
+                return <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />;
             case 'sent':
                 return <Check className="w-4 h-4 text-gray-400" />;
             case 'delivered':
                 return <CheckCheck className="w-4 h-4 text-gray-400" />;
             case 'read':
                 return <CheckCheck className="w-4 h-4 text-blue-500" />;
+            case 'failed':
+                return <X className="w-4 h-4 text-red-500" />;
             default:
                 return null;
         }
     };
 
+    const handleChatSelect = (chat) => {
+        setSelectedChat(chat.id);
+        setCurrentConversation(chat);
+        if (isMobileView) {
+            setShowChatList(false);
+        }
+    };
+
     const handleBlockUser = () => {
         // Handle block user logic
-        console.log('Block user:', currentChat?.name);
+        console.log('Block user:', currentConversation?.storeName);
         setShowDropdown(false);
         // You would typically show a confirmation dialog here
     };
 
     const handleViewProfile = () => {
         // Handle view profile logic
-        console.log('View profile:', currentChat?.name);
+        console.log('View profile:', currentConversation?.storeName);
         setShowDropdown(false);
     };
+
+    if (!user) {
+        return (
+            <div className="h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Login</h2>
+                    <p className="text-gray-600">You need to login to access chat feature</p>
+                </div>
+            </div>
+        );
+    }
 
     const ChatListSidebar = () => (
         <div className={`${isMobileView && !showChatList ? 'hidden' : 'flex'} flex-col w-full md:w-90 bg-white border-r border-gray-200 h-full`}>
@@ -287,66 +267,76 @@ export default function ChatPage() {
 
             {/* Chat List */}
             <div className="flex-1 overflow-y-auto">
-                {filteredChats.map((chat) => (
-                    <div
-                        key={chat.id}
-                        onClick={() => {
-                            setSelectedChat(chat.id);
-                            if (isMobileView) {
-                                setShowChatList(false);
-                            }
-                        }}
-                        className={`flex items-center p-4 mx-2 my-1 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
-                            selectedChat === chat.id ? 'bg-red-50 shadow-md border border-red-100' : ''
-                        }`}
-                    >
-                        <div className="relative">
-                            <img
-                                src={chat.avatar}
-                                alt={chat.name}
-                                className="w-14 h-14 rounded-full object-cover shadow-md"
-                            />
-                            {chat.online && (
-                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
-                            )}
-                        </div>
-                        
-                        <div className="ml-4 flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center">
-                                    <h3 className={`font-semibold truncate ${
-                                        selectedChat === chat.id ? 'text-red-600' : 'text-gray-900'
-                                    }`}>
-                                        {chat.name}
-                                    </h3>
-                                    {chat.type === 'shop' && (
-                                        <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                                            Toko
+                {loading && conversations.length === 0 ? (
+                    <div className="flex items-center justify-center p-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                    </div>
+                ) : filteredChats.length === 0 ? (
+                    <div className="text-center p-8">
+                        <p className="text-gray-500">Tidak ada percakapan ditemukan</p>
+                    </div>
+                ) : (
+                    filteredChats.map((chat) => (
+                        <div
+                            key={chat.id}
+                            onClick={() => handleChatSelect(chat)}
+                            className={`flex items-center p-4 mx-2 my-1 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                                selectedChat === chat.id ? 'bg-red-50 shadow-md border border-red-100' : ''
+                            }`}
+                        >
+                            <div className="relative">
+                                <img
+                                    src={chat.storeAvatar}
+                                    alt={chat.storeName}
+                                    className="w-14 h-14 rounded-full object-cover shadow-md"
+                                    onError={(e) => {
+                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.storeName)}&background=ef4444&color=fff&size=100`;
+                                    }}
+                                />
+                                {chat.online && (
+                                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                                )}
+                            </div>
+                            
+                            <div className="ml-4 flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center">
+                                        <h3 className={`font-semibold truncate ${
+                                            selectedChat === chat.id ? 'text-red-600' : 'text-gray-900'
+                                        }`}>
+                                            {chat.storeName}
+                                        </h3>
+                                        {chat.type === 'store' && (
+                                            <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                                Toko
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+                                        {formatTime(chat.lastMessageTime)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm text-gray-600 truncate flex-1">
+                                        {chat.lastMessage}
+                                    </p>
+                                    {chat.unreadCount > 0 && (
+                                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-sm">
+                                            {chat.unreadCount}
                                         </span>
                                     )}
                                 </div>
-                                <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">{chat.time}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-gray-600 truncate flex-1">
-                                    {chat.lastMessage}
-                                </p>
-                                {chat.unread > 0 && (
-                                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-sm">
-                                        {chat.unread}
-                                    </span>
-                                )}
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     );
 
     const ChatArea = () => (
         <div className={`${isMobileView && showChatList ? 'hidden' : 'flex'} flex-col flex-1 h-full bg-gradient-to-b from-gray-50 to-gray-100`}>
-            {currentChat ? (
+            {currentConversation ? (
                 <>
                     {/* Chat Header */}
                     <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
@@ -362,28 +352,31 @@ export default function ChatPage() {
                                 )}
                                 <div className="relative">
                                     <img
-                                        src={currentChat.avatar}
-                                        alt={currentChat.name}
+                                        src={currentConversation.storeAvatar}
+                                        alt={currentConversation.storeName}
                                         className="w-12 h-12 rounded-full object-cover shadow-md"
+                                        onError={(e) => {
+                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentConversation.storeName)}&background=ef4444&color=fff&size=100`;
+                                        }}
                                     />
-                                    {currentChat.online && (
+                                    {currentConversation.online && (
                                         <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                                     )}
                                 </div>
                                 <div className="ml-4">
                                     <h2 className="font-semibold text-gray-900 flex items-center">
-                                        {currentChat.name}
-                                        {currentChat.type === 'shop' && (
+                                        {currentConversation.storeName}
+                                        {currentConversation.type === 'store' && (
                                             <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
                                                 Toko
                                             </span>
                                         )}
                                     </h2>
                                     <p className="text-sm text-gray-600">
-                                        {currentChat.online ? (
+                                        {currentConversation.online ? (
                                             <span className="text-green-600 font-medium">● Online</span>
                                         ) : (
-                                            currentChat.lastMessage
+                                            currentConversation.lastMessage
                                         )}
                                     </p>
                                 </div>
@@ -439,72 +432,46 @@ export default function ChatPage() {
 
                     {/* Messages Area */}
                     <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-                        {currentMessages.map((msg) => (
-                            <div
-                                key={msg.id}
-                                className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
-                            >
+                        {loading && currentMessages.length === 0 ? (
+                            <div className="flex items-center justify-center p-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                            </div>
+                        ) : currentMessages.length === 0 ? (
+                            <div className="text-center p-8">
+                                <p className="text-gray-500">Belum ada pesan dalam percakapan ini</p>
+                            </div>
+                        ) : (
+                            currentMessages.map((msg) => (
                                 <div
-                                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-                                        msg.sender === 'me'
-                                            ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                                            : 'bg-white text-gray-900 border border-gray-200'
-                                    }`}
+                                    key={msg.id}
+                                    className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <p className="text-sm leading-relaxed">{msg.text}</p>
-                                    <div className={`flex items-center justify-end mt-2 space-x-1 ${
-                                        msg.sender === 'me' ? 'text-red-100' : 'text-gray-500'
-                                    }`}>
-                                        <span className="text-xs">{formatTime(msg.time)}</span>
-                                        {msg.sender === 'me' && renderMessageStatus(msg.status)}
+                                    <div
+                                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
+                                            msg.senderType === 'user'
+                                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                                                : 'bg-white text-gray-900 border border-gray-200'
+                                        }`}
+                                    >
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                                        <div className={`flex items-center justify-end mt-2 space-x-1 ${
+                                            msg.senderType === 'user' ? 'text-red-100' : 'text-gray-500'
+                                        }`}>
+                                            <span className="text-xs">{formatTime(msg.timestamp)}</span>
+                                            {msg.senderType === 'user' && renderMessageStatus(msg.status)}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
 
                     {/* Message Input */}
-                    <div className="bg-white border-t border-gray-200 p-4 shadow-lg ">
-                        <div className="flex items-end space-x-3 ">
-                            <button className="p-3 hover:bg-gray-100 rounded-xl transition-colors">
-                                <Paperclip className="w-5 h-5 text-gray-600" />
-                            </button>
-                            <button className="p-3 hover:bg-gray-100 rounded-xl transition-colors">
-                                <Image className="w-5 h-5 text-gray-600" />
-                            </button>
-                            
-                            <div className="flex-1 relative">
-                                <textarea
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder=""
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none max-h-32 min-h-[48px] shadow-sm"
-                                    rows="1"
-                                />
-                            </div>
-                            
-                            <button 
-                                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            >
-                                <Smile className="w-5 h-5 text-gray-600" />
-                            </button>
-                            
-                            <button
-                                onClick={handleSendMessage}
-                                disabled={!message.trim()}
-                                className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
-                                    message.trim()
-                                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transform hover:scale-105 shadow-red-200'
-                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                }`}
-                            >
-                                <Send className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
+                    <ChatInput 
+                        onSendMessage={handleSendMessage}
+                        disabled={loading}
+                    />
                 </>
             ) : (
                 <div className="flex-1 flex items-center justify-center">
