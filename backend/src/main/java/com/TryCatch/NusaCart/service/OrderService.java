@@ -86,7 +86,7 @@ public class OrderService {
 
             order.setDiscount(discount);
         }
-
+        //Cart deletion logic
         order.setTotal(total);
         orderRepository.save(order);        
         CartEntity userCart = cartRepository.findByUser(user).orElse(null);
