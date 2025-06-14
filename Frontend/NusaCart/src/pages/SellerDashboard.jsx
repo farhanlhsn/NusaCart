@@ -1,7 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
-import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Package, Users, Calendar, BarChart3 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from 'chart.js';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import useSellerStore from '../stores/sellerStore';
@@ -38,6 +63,15 @@ const SellerDashboard = () => {
   } = useSellerStore();
   const [activeMenu, setActiveMenu] = React.useState('produk');
   const itemsPerPage = 8;
+  
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = React.useState(null);
+  const [summaryData, setSummaryData] = React.useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = React.useState(false);
+  const [analyticsError, setAnalyticsError] = React.useState('');
+  const [selectedPeriod, setSelectedPeriod] = React.useState('7_days');
+  const [customStartDate, setCustomStartDate] = React.useState('');
+  const [customEndDate, setCustomEndDate] = React.useState('');
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -105,6 +139,55 @@ const SellerDashboard = () => {
       minimumFractionDigits: 0,
     }).format(amount).replace('IDR', 'Rp');
   };
+  
+  // Fetch analytics data
+  const fetchAnalytics = async (period = selectedPeriod, startDate = '', endDate = '') => {
+    setAnalyticsLoading(true);
+    setAnalyticsError('');
+    try {
+      const params = new URLSearchParams();
+      if (period !== 'custom') {
+        params.append('period', period);
+      } else if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+      
+      const [analyticsRes, summaryRes] = await Promise.all([
+        api.get(`/api/seller/analytics?${params.toString()}`),
+        api.get(`/api/seller/analytics/summary?${params.toString()}`)
+      ]);
+      
+      setAnalyticsData(analyticsRes.data);
+      setSummaryData(summaryRes.data);
+    } catch (err) {
+      setAnalyticsError(err.response?.data?.message || 'Gagal memuat data analisis');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+  
+  // Handle period change
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    if (period !== 'custom') {
+      fetchAnalytics(period);
+    }
+  };
+  
+  // Handle custom date filter
+  const handleCustomDateFilter = () => {
+    if (customStartDate && customEndDate) {
+      fetchAnalytics('custom', customStartDate, customEndDate);
+    }
+  };
+  
+  // Load analytics when menu changes to analisis
+  React.useEffect(() => {
+    if (activeMenu === 'analisis' && store?.idToko) {
+      fetchAnalytics();
+    }
+  }, [activeMenu, store?.idToko]);
   
   // No need for startIndex, endIndex, or currentProducts slicing if pagination is handled by the API
   // const startIndex = (currentPage - 1) * itemsPerPage;
@@ -590,14 +673,15 @@ const SellerDashboard = () => {
             </section>
 
             <section className="max-w-5xl mx-auto w-full px-2 md:px-0">
-              <div className="bg-white rounded-2xl shadow-lg p-6 mb-16">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Daftar Produk</h2>
-                    <p className="text-red-500 text-sm mt-1">Atur produkmu disini</p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
+              {activeMenu === 'produk' && (
+                <div className="bg-white rounded-2xl shadow-lg p-6 mb-16">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Daftar Produk</h2>
+                      <p className="text-red-500 text-sm mt-1">Atur produkmu disini</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
                       <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                       <input
                         type="text"
@@ -715,8 +799,528 @@ const SellerDashboard = () => {
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
+                  </div>
                 </div>
-              </div>
+              )}
+              
+              {activeMenu === 'analisis' && (
+                <div className="bg-white rounded-2xl shadow-lg p-6 mb-16">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <BarChart3 className="w-6 h-6 text-red-500" />
+                        Analisis Penjualan
+                      </h2>
+                      <p className="text-red-500 text-sm mt-1">Pantau performa toko Anda</p>
+                    </div>
+                    <div className="flex flex-col md:flex-row items-center gap-4">
+                      <select 
+                        value={selectedPeriod} 
+                        onChange={(e) => handlePeriodChange(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="7_days">7 Hari Terakhir</option>
+                        <option value="30_days">30 Hari Terakhir</option>
+                        <option value="90_days">3 Bulan Terakhir</option>
+                        <option value="1_year">1 Tahun Terakhir</option>
+                        <option value="custom">Periode Kustom</option>
+                      </select>
+                      {selectedPeriod === 'custom' && (
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="date" 
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          />
+                          <span className="text-gray-500">-</span>
+                          <input 
+                            type="date" 
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          />
+                          <button 
+                            onClick={handleCustomDateFilter}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                          >
+                            Filter
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {analyticsLoading && (
+                    <div className="p-8 text-center text-gray-500">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-2"></div>
+                      Memuat data analisis...
+                    </div>
+                  )}
+                  
+                  {analyticsError && (
+                    <div className="p-6 text-center text-red-500 bg-red-50 rounded-lg">
+                      {analyticsError}
+                    </div>
+                  )}
+                  
+                  {!analyticsLoading && !analyticsError && summaryData && (
+                    <div className="space-y-6">
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-blue-100 text-sm">Total Pesanan</p>
+                              <p className="text-2xl font-bold">{summaryData.totalOrders || 0}</p>
+                            </div>
+                            <Package className="w-8 h-8 text-blue-200" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-green-100 text-sm">Total Pendapatan</p>
+                              <p className="text-2xl font-bold">{formatCurrency(summaryData.totalRevenue || 0)}</p>
+                            </div>
+                            <DollarSign className="w-8 h-8 text-green-200" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-purple-100 text-sm">Produk Terjual</p>
+                              <p className="text-2xl font-bold">{summaryData.totalProductsSold || 0}</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-purple-200" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-orange-100 text-sm">Rata-rata Pesanan</p>
+                              <p className="text-2xl font-bold">{formatCurrency(summaryData.averageOrderValue || 0)}</p>
+                            </div>
+                            <Users className="w-8 h-8 text-orange-200" />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Analytics */}
+                      {analyticsData && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Top Products */}
+                          {analyticsData.topProducts && analyticsData.topProducts.length > 0 && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg">
+                              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                🏆 <span>Produk Terlaris</span>
+                              </h3>
+                              <div className="space-y-4">
+                                {analyticsData.topProducts.slice(0, 5).map((product, index) => (
+                                  <div key={product.productId} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200">
+                                    <div className="flex items-center gap-4">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                                        index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                                        index === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-600' :
+                                        index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
+                                        'bg-gradient-to-r from-blue-400 to-blue-600'
+                                      }`}>
+                                        <span className="text-sm">#{index + 1}</span>
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-gray-900">{product.productName}</p>
+                                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                                          <Package className="w-3 h-3" />
+                                          {product.quantitySold} terjual
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-bold text-green-600">{formatCurrency(product.revenue)}</p>
+                                      <p className="text-xs text-gray-500">Total Revenue</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Category Sales */}
+                          {analyticsData.categorySales && analyticsData.categorySales.length > 0 && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg">
+                              <h3 className="text-lg font-bold text-gray-900 mb-6">Distribusi Penjualan per Kategori</h3>
+                              <div className="h-80 flex items-center justify-center">
+                                <Doughnut
+                                  data={{
+                                    labels: analyticsData.categorySales.slice(0, 5).map(category => category.categoryName),
+                                    datasets: [
+                                      {
+                                        data: analyticsData.categorySales.slice(0, 5).map(category => category.revenue),
+                                        backgroundColor: [
+                                          'rgba(59, 130, 246, 0.8)',
+                                          'rgba(16, 185, 129, 0.8)',
+                                          'rgba(245, 158, 11, 0.8)',
+                                          'rgba(239, 68, 68, 0.8)',
+                                          'rgba(139, 92, 246, 0.8)',
+                                        ],
+                                        borderColor: [
+                                          'rgba(59, 130, 246, 1)',
+                                          'rgba(16, 185, 129, 1)',
+                                          'rgba(245, 158, 11, 1)',
+                                          'rgba(239, 68, 68, 1)',
+                                          'rgba(139, 92, 246, 1)',
+                                        ],
+                                        borderWidth: 3,
+                                        hoverOffset: 10,
+                                      }
+                                    ]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                          usePointStyle: true,
+                                          padding: 20,
+                                          font: {
+                                            size: 12,
+                                            weight: 'bold'
+                                          },
+                                          generateLabels: function(chart) {
+                                            const data = chart.data;
+                                            if (data.labels.length && data.datasets.length) {
+                                              return data.labels.map((label, i) => {
+                                                const value = data.datasets[0].data[i];
+                                                const category = analyticsData.categorySales[i];
+                                                return {
+                                                  text: `${label} (${category.orderCount} pesanan)`,
+                                                  fillStyle: data.datasets[0].backgroundColor[i],
+                                                  strokeStyle: data.datasets[0].borderColor[i],
+                                                  lineWidth: data.datasets[0].borderWidth,
+                                                  pointStyle: 'circle',
+                                                  hidden: false,
+                                                  index: i
+                                                };
+                                              });
+                                            }
+                                            return [];
+                                          }
+                                        }
+                                      },
+                                      tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        titleColor: 'white',
+                                        bodyColor: 'white',
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        borderWidth: 1,
+                                        cornerRadius: 8,
+                                        callbacks: {
+                                          label: function(context) {
+                                            const category = analyticsData.categorySales[context.dataIndex];
+                                            const total = analyticsData.categorySales.reduce((sum, cat) => sum + cat.revenue, 0);
+                                            const percentage = ((category.revenue / total) * 100).toFixed(1);
+                                            return [
+                                              `${category.categoryName}`,
+                                              `Pendapatan: ${formatCurrency(category.revenue)}`,
+                                              `Pesanan: ${category.orderCount}`,
+                                              `Persentase: ${percentage}%`
+                                            ];
+                                          }
+                                        }
+                                      }
+                                    },
+                                    animation: {
+                                      animateRotate: true,
+                                      duration: 1000
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Daily Sales Chart */}
+                          {analyticsData.dailySales && analyticsData.dailySales.length > 0 && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg lg:col-span-2">
+                              <h3 className="text-lg font-bold text-gray-900 mb-6">Grafik Penjualan Harian</h3>
+                              <div className="h-80">
+                                <Bar
+                                  data={{
+                                    labels: analyticsData.dailySales.slice(-7).map(day => {
+                                      const date = new Date(day.date);
+                                      return date.toLocaleDateString('id-ID', { 
+                                        weekday: 'short', 
+                                        day: 'numeric', 
+                                        month: 'short' 
+                                      });
+                                    }),
+                                    datasets: [
+                                      {
+                                        label: 'Pendapatan (Rp)',
+                                        data: analyticsData.dailySales.slice(-7).map(day => day.revenue),
+                                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        borderWidth: 2,
+                                        borderRadius: 8,
+                                        borderSkipped: false,
+                                      },
+                                      {
+                                        label: 'Jumlah Pesanan',
+                                        data: analyticsData.dailySales.slice(-7).map(day => day.orderCount * 50000), // Scale for visibility
+                                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                                        borderColor: 'rgba(16, 185, 129, 1)',
+                                        borderWidth: 2,
+                                        borderRadius: 8,
+                                        borderSkipped: false,
+                                      }
+                                    ]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: {
+                                        position: 'top',
+                                        labels: {
+                                          usePointStyle: true,
+                                          padding: 20,
+                                          font: {
+                                            size: 12,
+                                            weight: 'bold'
+                                          }
+                                        }
+                                      },
+                                      tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        titleColor: 'white',
+                                        bodyColor: 'white',
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        borderWidth: 1,
+                                        cornerRadius: 8,
+                                        callbacks: {
+                                          label: function(context) {
+                                            if (context.datasetIndex === 0) {
+                                              return `Pendapatan: ${formatCurrency(context.parsed.y)}`;
+                                            } else {
+                                              return `Pesanan: ${Math.round(context.parsed.y / 50000)} order`;
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    scales: {
+                                      y: {
+                                        beginAtZero: true,
+                                        grid: {
+                                          color: 'rgba(0, 0, 0, 0.1)',
+                                        },
+                                        ticks: {
+                                          callback: function(value) {
+                                            return formatCurrency(value);
+                                          },
+                                          font: {
+                                            size: 11
+                                          }
+                                        }
+                                      },
+                                      x: {
+                                        grid: {
+                                          display: false,
+                                        },
+                                        ticks: {
+                                          font: {
+                                            size: 11,
+                                            weight: 'bold'
+                                          }
+                                        }
+                                      }
+                                    },
+                                    animation: {
+                                      duration: 1000,
+                                      easing: 'easeInOutQuart'
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Monthly Sales Trend */}
+                          {analyticsData.monthlySales && analyticsData.monthlySales.length > 0 && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg lg:col-span-2">
+                              <h3 className="text-lg font-bold text-gray-900 mb-6">📈 Trend Penjualan Bulanan</h3>
+                              <div className="h-80">
+                                <Line
+                                  data={{
+                                    labels: analyticsData.monthlySales.map(month => {
+                                      const date = new Date(month.month + '-01');
+                                      return date.toLocaleDateString('id-ID', { 
+                                        month: 'short', 
+                                        year: 'numeric' 
+                                      });
+                                    }),
+                                    datasets: [
+                                      {
+                                        label: 'Pendapatan Bulanan',
+                                        data: analyticsData.monthlySales.map(month => month.revenue),
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                        borderWidth: 3,
+                                        fill: true,
+                                        tension: 0.4,
+                                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                                        pointBorderColor: 'white',
+                                        pointBorderWidth: 2,
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8,
+                                      },
+                                      {
+                                        label: 'Jumlah Pesanan',
+                                        data: analyticsData.monthlySales.map(month => month.orderCount * 100000), // Scale for visibility
+                                        borderColor: 'rgba(16, 185, 129, 1)',
+                                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                        borderWidth: 3,
+                                        fill: true,
+                                        tension: 0.4,
+                                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                                        pointBorderColor: 'white',
+                                        pointBorderWidth: 2,
+                                        pointRadius: 6,
+                                        pointHoverRadius: 8,
+                                      }
+                                    ]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      legend: {
+                                        position: 'top',
+                                        labels: {
+                                          usePointStyle: true,
+                                          padding: 20,
+                                          font: {
+                                            size: 12,
+                                            weight: 'bold'
+                                          }
+                                        }
+                                      },
+                                      tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        titleColor: 'white',
+                                        bodyColor: 'white',
+                                        borderColor: 'rgba(59, 130, 246, 1)',
+                                        borderWidth: 1,
+                                        cornerRadius: 8,
+                                        callbacks: {
+                                          label: function(context) {
+                                            if (context.datasetIndex === 0) {
+                                              return `Pendapatan: ${formatCurrency(context.parsed.y)}`;
+                                            } else {
+                                              return `Pesanan: ${Math.round(context.parsed.y / 100000)} order`;
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    scales: {
+                                      y: {
+                                        beginAtZero: true,
+                                        grid: {
+                                          color: 'rgba(0, 0, 0, 0.1)',
+                                        },
+                                        ticks: {
+                                          callback: function(value) {
+                                            return formatCurrency(value);
+                                          },
+                                          font: {
+                                            size: 11
+                                          }
+                                        }
+                                      },
+                                      x: {
+                                        grid: {
+                                          color: 'rgba(0, 0, 0, 0.05)',
+                                        },
+                                        ticks: {
+                                          font: {
+                                            size: 11,
+                                            weight: 'bold'
+                                          }
+                                        }
+                                      }
+                                    },
+                                    animation: {
+                                      duration: 1500,
+                                      easing: 'easeInOutQuart'
+                                    },
+                                    interaction: {
+                                      intersect: false,
+                                      mode: 'index'
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Growth Rate */}
+                      {summaryData.growthRate !== undefined && (
+                        <div className={`p-6 rounded-xl shadow-lg border-l-4 ${
+                          summaryData.growthRate >= 0 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-500' 
+                            : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-500'
+                        }`}>
+                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            📊 <span>Tingkat Pertumbuhan</span>
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-3 rounded-full ${
+                                summaryData.growthRate >= 0 ? 'bg-green-100' : 'bg-red-100'
+                              }`}>
+                                <TrendingUp className={`w-6 h-6 ${
+                                  summaryData.growthRate >= 0 ? 'text-green-600' : 'text-red-600'
+                                } ${summaryData.growthRate < 0 ? 'rotate-180' : ''}`} />
+                              </div>
+                              <div>
+                                <span className={`text-3xl font-bold ${
+                                  summaryData.growthRate >= 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {summaryData.growthRate >= 0 ? '+' : ''}{summaryData.growthRate.toFixed(1)}%
+                                </span>
+                                <p className="text-sm text-gray-600 mt-1">dibanding periode sebelumnya</p>
+                              </div>
+                            </div>
+                            <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                              summaryData.growthRate >= 0 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {summaryData.growthRate >= 0 ? '📈 Naik' : '📉 Turun'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {!analyticsLoading && !analyticsError && !summaryData && (
+                    <div className="p-8 text-center text-gray-500">
+                      <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-lg font-medium">Belum ada data penjualan</p>
+                      <p className="text-sm">Data analisis akan muncul setelah Anda memiliki pesanan</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="fixed bottom-8 right-8 z-30 flex flex-col items-end gap-4">
                 <button
