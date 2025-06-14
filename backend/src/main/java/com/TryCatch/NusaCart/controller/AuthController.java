@@ -69,10 +69,65 @@ public class AuthController {
         consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody UserRegisterDTO registerDto) {
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody UserRegisterDTO registerDto) {
         log.info("Registration attempt for email: {}", registerDto.getEmail());
-        AuthResponseDTO response = authService.register(registerDto);
+        Map<String, String> response = authService.register(registerDto);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+    
+    @PostMapping(
+        path = "/verify-registration",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> verifyRegistration(@RequestBody Map<String, Object> request) {
+        log.info("Registration verification attempt for email: {}", request.get("email"));
+        
+        String email = (String) request.get("email");
+        Integer verificationCode = (Integer) request.get("verificationCode");
+        
+        if (email == null || verificationCode == null) {
+            throw new RuntimeException("Email and verification code are required");
+        }
+        
+        Map<String, String> response = authService.verifyRegistration(email, verificationCode);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @PostMapping(
+        path = "/resend-registration-otp",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> resendRegistrationOTP(@RequestBody Map<String, String> request) {
+        log.info("Resend registration OTP for email: {}", request.get("email"));
+        
+        String email = request.get("email");
+        if (email == null) {
+            throw new RuntimeException("Email is required");
+        }
+        
+        Map<String, String> response = authService.resendRegistrationOTP(email);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @PostMapping(
+        path = "/update-phone-registration",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> updatePhoneRegistration(@RequestBody Map<String, String> request) {
+        log.info("Update phone number for registration email: {}", request.get("email"));
+        
+        String email = request.get("email");
+        String phoneNumber = request.get("phoneNumber");
+        
+        if (email == null || phoneNumber == null) {
+            throw new RuntimeException("Email and phone number are required");
+        }
+        
+        Map<String, String> response = authService.updatePhoneRegistration(email, phoneNumber);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
     
     @PostMapping(

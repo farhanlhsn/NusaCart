@@ -20,6 +20,7 @@ public class UserBasicDTO {
     private Set<UserRole> role;             
     private String profilePicture;
     private String phoneNumber;
+    private boolean isVerified;
     
     // Constructor untuk mengkonversi User Entity ke DTO
     public UserBasicDTO(UserEntity user) {
@@ -29,5 +30,6 @@ public class UserBasicDTO {
         this.profilePicture = user.getProfilePicture();
         this.email = user.getEmail();
         this.phoneNumber = user.getPhoneNumber();
+        this.isVerified = user.isVerified();
     }
 }

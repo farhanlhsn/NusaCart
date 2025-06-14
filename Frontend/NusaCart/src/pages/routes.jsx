@@ -3,6 +3,7 @@ import Layout from "./layout";
 import LoginPage from "./LoginPage";
 import ErrorPage from "./ErrorPage";
 import UserRegisterPage from "./UserRegisterPage";
+import VerifyRegistrationPage from "./VerifyRegistrationPage";
 import HomePage from "./HomePage";
 import ForgetPasswordPage from "./ForgetPasswordPage";
 import Profile from "./profile";
@@ -24,7 +25,6 @@ import PaymentPage from './PaymentPage';
 import PromoListPage from './PromoListPage';
 import CategoryPage from './CategoryPage';
 import CategoriesListPage from './CategoriesListPage';
-import TokoPage from './TokoPage';
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +34,10 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <UserRegisterPage />,
+  },
+  {
+    path: "/verify-registration",
+    element: <VerifyRegistrationPage />,
   },
   {
     path: "/forgot",
@@ -131,10 +135,6 @@ export const router = createBrowserRouter([
       {
         path: "/categories/:categoryValue",
         element: <CategoryPage />,
-      },
-      {
-        path: "/toko/:id",
-        element: <TokoPage />,
       },
     ],
   },

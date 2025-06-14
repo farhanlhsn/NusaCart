@@ -198,6 +198,9 @@ if (typeof window !== 'undefined') {
 export const authAPI = {
   login: (data) => api.post('/api/auth/login', data),
   register: (data) => api.post('/api/auth/register', data),
+  verifyRegistration: (data) => api.post('/api/auth/verify-registration', data),
+  resendRegistrationOTP: (data) => api.post('/api/auth/resend-registration-otp', data),
+  updatePhoneRegistration: (data) => api.post('/api/auth/update-phone-registration', data),
   logout: () => api.post('/api/auth/logout'),
   refresh: () => api.post('/api/auth/refresh'),
   forgotPassword: (data) => api.post('/api/auth/forget_password', data),
@@ -245,16 +248,30 @@ export const categoryAPI = {
 // PRODUCT API ENDPOINTS
 // ========================
 export const productAPI = {
-  // Get all products with basic pagination
-  getAll: (page = 0, size = 10) => {
-    console.log('productAPI.getAll called with:', { page, size });
-    return api.get(`/api/products?page=${page}&size=${size}`);
-  },
-  
+  getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
+
   // Get all products with comprehensive filtering
-  getAllWithFilters: (queryString) => {
-    console.log('productAPI.getAllWithFilters called with:', queryString);
-    return api.get(`/api/products?${queryString}`);
+  getAll: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    // Basic pagination
+    queryParams.append('page', params.page || 0);
+    queryParams.append('size', params.size || 10);
+    
+    // Optional filters
+    if (params.categoryId) queryParams.append('categoryId', params.categoryId);
+    if (params.tokoId) queryParams.append('tokoId', params.tokoId);
+    if (params.minPrice) queryParams.append('minPrice', params.minPrice);
+    if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice);
+    if (params.minStock) queryParams.append('minStock', params.minStock);
+    if (params.productName) queryParams.append('productName', params.productName);
+    if (params.generalCategory) queryParams.append('generalCategory', params.generalCategory);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
+    if (params.activeOnly !== undefined) queryParams.append('activeOnly', params.activeOnly);
+    
+    return api.get(`/api/products?${queryParams.toString()}`);
   },
   
   getById: (id) => api.get(`/api/products/${id}`),
@@ -398,7 +415,7 @@ export const discountAPI = {
 // ========================
 export const reviewAPI = {
   getByProduct: (productId) => api.get(`/api/reviews/product/${productId}`),
-  create: (productId, data) => api.post(`/api/reviews/product/${productId}`, data),
+  create: (data) => api.post('/api/reviews', data),
   update: (reviewId, data) => api.put(`/api/reviews/${encodeURIComponent(reviewId)}`, data),
 };
 

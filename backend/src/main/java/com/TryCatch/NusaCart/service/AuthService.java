@@ -49,17 +49,22 @@ public class AuthService {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    
+    @Autowired
+    private UserService userService;
 
     public AuthService(UserRepository userRepository, 
                       PasswordEncoder passwordEncoder, 
                       JwtUtil jwtUtil,
                       TokoRepository tokoRepository, 
-                      RefreshTokenRepository refreshTokenRepository) {
+                      RefreshTokenRepository refreshTokenRepository,
+                      UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.tokoRepository = tokoRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.userService = userService;
     }
 
 
@@ -138,7 +143,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponseDTO register(UserRegisterDTO request) {
+    public Map<String, String> register(UserRegisterDTO request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email " + request.getEmail() + " sudah terdaftar");
         }
@@ -151,9 +156,22 @@ public class AuthService {
         user.setRegisteredDate(LocalDateTime.now());
         user.setProfilePicture("");
         user.setPhoneNumber(request.getPhoneNumber());
-        UserEntity savedUser = userRepository.save(user);
+        user.setVerified(false);
         
-        return new AuthResponseDTO(new UserBasicDTO(savedUser), "Registrasi berhasil");
+        // Tidak langsung save ke database, tapi kirim OTP dulu
+        return userService.sendRegistrationOTP(user);
+    }
+    
+    public Map<String, String> verifyRegistration(String email, Integer verificationCode) {
+        return userService.verifyRegistrationOTP(email, verificationCode);
+    }
+    
+    public Map<String, String> resendRegistrationOTP(String email) {
+        return userService.resendRegistrationOTP(email);
+    }
+    
+    public Map<String, String> updatePhoneRegistration(String email, String phoneNumber) {
+        return userService.updatePhoneRegistration(email, phoneNumber);
     }
 
     @Transactional
