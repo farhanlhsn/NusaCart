@@ -188,5 +188,23 @@ public class WishlistService {
         wishlist.removeFromWishlist(product);
         return convertToResponseDTO(wishlistRepository.save(wishlist));
     }
-}
 
+    public boolean isProductInUserWishlist(Integer productId, UserEntity user) {
+        try {
+            WishlistEntity wishlist = wishlistRepository.findByUserId(user).orElse(null);
+            if (wishlist == null) {
+                return false;
+            }
+            
+            ProductEntity product = productRepository.findByProductId(productId).orElse(null);
+            if (product == null) {
+                return false;
+            }
+            
+            return wishlist.getProducts().contains(product);
+        } catch (Exception e) {
+            log.error("Error checking if product {} is in user wishlist: {}", productId, e.getMessage());
+            return false;
+        }
+    }
+}
