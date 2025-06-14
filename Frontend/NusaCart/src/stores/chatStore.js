@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { chatAPI, tokoAPI } from '../services/api';
+import useAuthStore from './authStore';
 
 const useChatStore = create(
   subscribeWithSelector(
@@ -93,6 +94,7 @@ const useChatStore = create(
       fetchMessages: async (conversationId) => {
         set({ loading: true, error: null });
         try {
+          const { user } = useAuthStore.getState();
           // Get store info first
           const storeInfo = await get().fetchStoreInfo(conversationId);
           const sellerId = storeInfo?.idSeller || storeInfo?.seller?.userId || storeInfo?.sellerId || conversationId;
@@ -103,13 +105,11 @@ const useChatStore = create(
             throw new Error('Seller ID not found in store data');
           }
           
-          console.log('Using sellerId for fetchMessages:', sellerId);
-
+          // Ambil userId lawan chat (sellerId) dan user login (user.userId)
+          const userId = user?.userId;
           // Fetch real chat history from backend
-          console.log('Calling chatAPI.getChatHistory with sellerId:', sellerId);
           const response = await chatAPI.getChatHistory(sellerId);
           const chatHistory = response.data || [];
-          console.log('Chat history response:', chatHistory);
 
           // Transform backend data to frontend format
           const transformedMessages = chatHistory.map(chat => ({
@@ -117,7 +117,7 @@ const useChatStore = create(
             conversationId,
             text: chat.message,
             senderId: chat.senderId,
-            senderType: chat.senderId === sellerId ? 'store' : 'user',
+            senderType: chat.senderId === userId ? 'user' : 'store',
             timestamp: chat.timestamp,
             status: 'read',
             productId: chat.productId,
@@ -152,7 +152,6 @@ const useChatStore = create(
           return transformedMessages;
         } catch (error) {
           console.error('Error fetching messages:', error);
-          
           // Fallback to welcome message only
           const fallbackMessages = [
             {
@@ -182,8 +181,8 @@ const useChatStore = create(
       // Send a message using real backend
       sendMessage: async (conversationId, messageText) => {
         if (!messageText.trim()) return;
-
         try {
+          const { user } = useAuthStore.getState();
           // Get store info to get seller ID
           const storeInfo = await get().fetchStoreInfo(conversationId);
           const sellerId = storeInfo?.idSeller || storeInfo?.seller?.userId || storeInfo?.sellerId || conversationId;
@@ -193,10 +192,7 @@ const useChatStore = create(
             console.error('Conversation ID:', conversationId);
             throw new Error('Seller ID not found in store data');
           }
-          
-          console.log('Using sellerId for sendMessage:', sellerId);
-
-          // Send message to backend
+          // receiverId = sellerId (userId lawan chat)
           const messageData = {
             receiverId: sellerId,
             message: messageText.trim(),
@@ -204,10 +200,8 @@ const useChatStore = create(
             orderId: null    // Can be set if needed
           };
 
-          console.log('Sending message to backend:', messageData);
           const response = await chatAPI.sendMessage(messageData);
           const savedMessage = response.data;
-          console.log('Send message response:', savedMessage);
 
           // Transform backend response to frontend format
           const newMessage = {
@@ -215,14 +209,13 @@ const useChatStore = create(
             conversationId,
             text: savedMessage.message,
             senderId: savedMessage.senderId,
-            senderType: 'user',
+            senderType: savedMessage.senderId === user?.userId ? 'user' : 'store',
             timestamp: savedMessage.timestamp,
             status: 'sent',
             productId: savedMessage.productId,
             orderId: savedMessage.orderId
           };
 
-          // Add message to state
           set(state => ({
             messages: {
               ...state.messages,
@@ -241,14 +234,14 @@ const useChatStore = create(
           return newMessage;
         } catch (error) {
           console.error('Error sending message:', error);
-          
           // Fallback to optimistic update if backend fails
+          const { user } = useAuthStore.getState();
           const tempId = Date.now();
           const fallbackMessage = {
             id: tempId,
             conversationId,
             text: messageText.trim(),
-            senderId: 'current_user',
+            senderId: user?.userId || 'current_user',
             senderType: 'user',
             timestamp: new Date().toISOString(),
             status: 'failed'
@@ -261,11 +254,10 @@ const useChatStore = create(
                 ...(state.messages[conversationId] || []),
                 fallbackMessage
               ]
-            },
-            error: 'Failed to send message'
+            }
           }));
 
-          throw error;
+          return fallbackMessage;
         }
       },
 

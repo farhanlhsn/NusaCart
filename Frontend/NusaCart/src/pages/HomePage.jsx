@@ -10,15 +10,15 @@ export default function HomePage() {
     const [showBanner, setShowBanner] = React.useState(false);
     const { products, loading, error, fetchProducts } = useProductStore();
 
-    const categories = [
-        { name: "Fashion", icon: "👗", color: "bg-gradient-to-r from-pink-500 to-rose-500" },
-        { name: "Elektronik", icon: "📱", color: "bg-gradient-to-r from-blue-500 to-cyan-500" },
-        { name: "Makanan", icon: "🍕", color: "bg-gradient-to-r from-amber-500 to-orange-500" },
-        { name: "Kesehatan", icon: "💊", color: "bg-gradient-to-r from-emerald-500 to-green-500" },
-        { name: "Olahraga", icon: "⚽", color: "bg-gradient-to-r from-red-500 to-orange-500" },
-        { name: "Hobi", icon: "🎨", color: "bg-gradient-to-r from-purple-500 to-indigo-500" },
-        { name: "Rumah", icon: "🏠", color: "bg-gradient-to-r from-yellow-500 to-amber-500" },
-        { name: "Lainnya", icon: "📦", color: "bg-gradient-to-r from-gray-500 to-slate-500" }
+    const generalCategories = [
+        { value: 'ELEKTRONIK', label: 'Elektronik', icon: '📱', color: 'bg-gradient-to-r from-blue-500 to-cyan-500' },
+        { value: 'FURNITUR', label: 'Furnitur', icon: '🏠', color: 'bg-gradient-to-r from-yellow-500 to-amber-500' },
+        { value: 'PAKAIAN', label: 'Pakaian', icon: '👗', color: 'bg-gradient-to-r from-pink-500 to-rose-500' },
+        { value: 'MAKANAN_MINUMAN', label: 'Makanan & Minuman', icon: '🍕', color: 'bg-gradient-to-r from-amber-500 to-orange-500' },
+        { value: 'KESEHATAN_KECANTIKAN', label: 'Kesehatan & Kecantikan', icon: '💊', color: 'bg-gradient-to-r from-emerald-500 to-green-500' },
+        { value: 'OLAHRAGA_OUTDOOR', label: 'Olahraga & Outdoor', icon: '⚽', color: 'bg-gradient-to-r from-red-500 to-orange-500' },
+        { value: 'MAINAN_HOBI', label: 'Mainan & Hobi', icon: '🎨', color: 'bg-gradient-to-r from-purple-500 to-indigo-500' },
+        { value: 'RUMAH_TANGGA', label: 'Rumah Tangga', icon: '🏡', color: 'bg-gradient-to-r from-yellow-500 to-amber-500' }
     ];
 
     // Gambar contoh untuk hero section
@@ -59,10 +59,10 @@ export default function HomePage() {
                                     Mulai Belanja
                                 </button>
                                 <button 
-                                    onClick={() => window.scrollTo({top: document.querySelector('#categories').offsetTop - 100, behavior: 'smooth'})}
+                                    onClick={() => navigate('/promo')}
                                     className="px-8 py-4 bg-white text-gray-900 font-bold border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-md hover:shadow-lg"
                                 >
-                                    Lihat Kategori
+                                    Lihat Promo
                                 </button>
                             </div>
                         </div>
@@ -100,17 +100,17 @@ export default function HomePage() {
                         </button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                        {categories.map((category) => (
+                        {generalCategories.map((category) => (
                             <button
-                                key={category.name}
-                                onClick={() => navigate(`/category/${category.name.toLowerCase()}`)}
+                                key={category.value}
+                                onClick={() => navigate(`/categories/${category.value}`)}
                                 className="group flex flex-col items-center p-4 rounded-2xl bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                             >
                                 <div className={`w-16 h-16 rounded-full ${category.color} flex items-center justify-center text-3xl mb-3 group-hover:scale-110 transition-transform text-white`}>
                                     {category.icon}
                                 </div>
                                 <span className="text-sm font-medium text-gray-700 text-center group-hover:text-gray-900 group-hover:font-bold transition-all">
-                                    {category.name}
+                                    {category.label}
                                 </span>
                             </button>
                         ))}

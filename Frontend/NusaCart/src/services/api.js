@@ -50,7 +50,12 @@ api.interceptors.response.use(
     console.log('[Response Interceptor] Error message:', error.response?.data?.message);
 
     // Handle 401 Unauthorized errors (token expired or invalid)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Tambahkan juga handle 400 dengan pesan 'User not authenticated'
+    const isAuthError = (
+      error.response?.status === 401 ||
+      (error.response?.status === 400 && error.response?.data?.message === 'User not authenticated')
+    );
+    if (isAuthError && !originalRequest._retry) {
       // Skip refresh for auth endpoints to avoid infinite loops
       if (originalRequest.url?.includes('/api/auth/login') || 
           originalRequest.url?.includes('/api/auth/register') ||

@@ -21,6 +21,7 @@ export default function Profile() {
     const [activeMenu, setActiveMenu] = useState('profile');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [showSellerModal, setShowSellerModal] = useState(false);
+    const [pendingNavigation, setPendingNavigation] = useState(null);
 
     useEffect(() => {
         if (!isLoggedIn) {
@@ -28,27 +29,48 @@ export default function Profile() {
         }
     }, [isLoggedIn, navigate]);
 
+    useEffect(() => {
+        if (pendingNavigation) {
+            switch (pendingNavigation) {
+                case 'cart':
+                    navigate('/cart');
+                    break;
+                case 'wishlist':
+                    navigate('/wishlist');
+                    break;
+                case 'orders':
+                    navigate('/orders');
+                    break;
+                default:
+                    break;
+            }
+            setPendingNavigation(null);
+        }
+    }, [pendingNavigation, navigate]);
+
     const menuItems = [
         { id: 'profile', label: 'Profil Saya' },
         { id: 'address', label: 'Daftar Alamat' },
-        { id: 'payment', label: 'Metode Pembayaran' },
         { id: 'cart', label: 'Keranjang Saya' },
-        { id: 'wishlist', label: 'Wishlist Saya' }
+        { id: 'wishlist', label: 'Wishlist Saya' },
+        { id: 'orders', label: 'Pesanan Saya' }
     ];
 
     const getMenuLabel = (menuId) => menuItems.find(item => item.id === menuId)?.label || 'Profil Saya';
 
     const handleLogout = async () => {
+        console.log('Logout clicked');
         if (window.confirm('Apakah Anda yakin ingin keluar?')) {
             setIsLoggingOut(true);
             try {
                 await new Promise(resolve => setTimeout(resolve, 500));
-                logout();
+                await logout();
                 navigate('/login');
             } catch (error) {
                 console.error('Logout error:', error);
             } finally {
                 setIsLoggingOut(false);
+                console.log('Logout finished');
             }
         }
     };
@@ -61,12 +83,6 @@ export default function Profile() {
                 return <EditProfile />;
             case 'address':
                 return <AddressList />;
-            case 'payment':
-                return <PlaceholderContent title="Metode Pembayaran" />;
-            case 'cart':
-                return <PlaceholderContent title="Keranjang Saya" />;
-            case 'wishlist':
-                return <PlaceholderContent title="Wishlist Saya" />;
             default:
                 return <EditProfile />;
         }
@@ -97,13 +113,7 @@ export default function Profile() {
                             {menuItems.slice(0, 3).map((item) => (
                                 <li key={item.id}>
                                     <button
-                                        onClick={() => {
-                                            if (item.id === 'payment') {
-                                                alert('Fitur ini masih dalam pengembangan.');
-                                                return;
-                                            }
-                                            setActiveMenu(item.id);
-                                        }}
+                                        onClick={() => setActiveMenu(item.id)}
                                         className={`w-full text-left px-8 rounded ${ activeMenu === item.id ? 'text-red-500 font-semibold' : 'text-gray-400 hover:text-gray-800' } ${ item.id === 'payment' ? 'cursor-not-allowed opacity-50' : ''}`}
                                     >
                                         {item.label}
@@ -117,7 +127,7 @@ export default function Profile() {
                             {menuItems.slice(3, 5).map((item) => (
                                 <li key={item.id}>
                                     <button
-                                        onClick={() => setActiveMenu(item.id)}
+                                        onClick={() => setPendingNavigation(item.id)}
                                         className={`w-full text-left px-8 rounded ${activeMenu === item.id ? 'text-red-500 font-semibold' : 'text-gray-400 hover:text-gray-800'}`}
                                     >
                                         {item.label}

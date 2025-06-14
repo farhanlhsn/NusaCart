@@ -117,22 +117,22 @@ const OrderHistoryPage = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Order History</h1>
-        <p className="text-gray-600 mt-2">View and track all your orders</p>
+        <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
+        <p className="text-gray-600 mt-2">Lihat dan lacak semua pesanan Anda</p>
       </div>
 
       {orders.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 text-6xl mb-4">📦</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Orders Yet</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Belum ada pesanan</h3>
           <p className="text-gray-600 mb-6">
-            You haven't placed any orders yet. Start shopping to see your orders here.
+            Anda belum memesan apa-apa. Mulai berbelanja untuk melihat pesanan Anda di sini.
           </p>
           <button
             onClick={() => navigate('/products')}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
           >
-            Start Shopping
+            Mulai Berbelanja
           </button>
         </div>
       ) : (
@@ -163,7 +163,7 @@ const OrderHistoryPage = () => {
 
                 {/* Order Items */}
                 <div className="border-t border-gray-200 pt-4 mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Items Ordered</h4>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Barang yang dipesan</h4>
                   <div className="space-y-3">
                     {order.items.map((item, index) => (
                       <div key={index} className="flex items-center space-x-4">
@@ -209,7 +209,7 @@ const OrderHistoryPage = () => {
                       onClick={() => handleViewTracking(order)}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium w-full md:w-auto"
                     >
-                      View Tracking
+                      Lacak Pesanan
                     </button>
                     
                     {order.orderStatus === 'DELIVERED' && (
@@ -217,7 +217,7 @@ const OrderHistoryPage = () => {
                         onClick={() => navigate(`/product/${order.items[0]?.productId}`)}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium w-full md:w-auto"
                       >
-                        Write Review
+                        Tulis Ulasan
                       </button>
                     )}
                   </div>
@@ -251,7 +251,7 @@ const OrderHistoryPage = () => {
             
             <div className="p-6">
               {trackingLoading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-8 ">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
@@ -283,14 +283,14 @@ const OrderTracking = ({ orderId }) => {
   if (trackingItems.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-600">No tracking information available yet.</p>
+        <p className="text-gray-600">Belum ada informasi pelacakan.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900">Tracking Timeline</h3>
+      <h3 className="text-lg font-semibold text-gray-900">Jadwal Pelacakan</h3>
       
       <div className="relative">
         {trackingItems.map((item, index) => (
