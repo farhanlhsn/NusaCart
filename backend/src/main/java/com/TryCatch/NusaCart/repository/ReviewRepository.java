@@ -11,7 +11,7 @@ import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.entity.ProductEntity;
 
 @Repository
-public interface ReviewRepository extends JpaRepository<ReviewEntity, String> {
+public interface ReviewRepository extends JpaRepository<ReviewEntity, Integer> {
     
     // Cari review berdasarkan ID
     Optional<ReviewEntity> findByReviewId(Integer reviewId);

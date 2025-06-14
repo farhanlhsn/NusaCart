@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface CartRepository extends JpaRepository<CartEntity, Long> {
     Optional<CartEntity> findByUser(UserEntity user);
+    void deleteByUserAndProductId(UserEntity user, Integer productId);
 }
