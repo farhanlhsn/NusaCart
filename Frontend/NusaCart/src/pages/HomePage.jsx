@@ -159,7 +159,7 @@ export default function HomePage() {
                 <section className="py-4">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h2 className="text-3xl font-extrabold text-gray-900">Rekomendasi Untukmu</h2>
+                            <h2 className="text-3xl font-extrabold text-gray-900">Produk Terbaru</h2>
                         </div>
                         <button 
                             onClick={() => navigate('/products')}
@@ -233,7 +233,7 @@ export default function HomePage() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-                                    {products.slice(0, 5).map(product => (
+                                    {products.slice(0, 4).map(product => (
                                         <ProductCard key={product.productId} product={product} />
                                     ))}
                                 </div>

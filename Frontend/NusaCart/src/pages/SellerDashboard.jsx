@@ -33,7 +33,8 @@ const SellerDashboard = () => {
     setShowCategoryModal,
     setNewCategoryId,
     setCategories,
-    fetchStoreAndProducts
+    fetchStoreAndProducts,
+    refreshCategories
   } = useSellerStore();
   const [activeMenu, setActiveMenu] = React.useState('produk');
   const itemsPerPage = 8;
@@ -110,8 +111,8 @@ const SellerDashboard = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentProducts = products.slice(startIndex, endIndex);
 
-  // Modal Product Form
-  const ProductModal = ({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
+  // Modal Product Form - Wrapped with React.memo to prevent unnecessary re-renders
+  const ProductModal = React.memo(({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
     const [form, setForm] = React.useState(product || {
       productName: '',
       description: '',
@@ -125,31 +126,194 @@ const SellerDashboard = () => {
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
     const [selectedImages, setSelectedImages] = React.useState([]);
+    const [modalCategories, setModalCategories] = React.useState([]);
+    
+    // Use ref to store form state to prevent loss during re-renders
+    const formRef = React.useRef(form);
+    const selectedImagesRef = React.useRef(selectedImages);
+    const isRestoringRef = React.useRef(false);
+    
+    // Update refs when form changes (but not during restoration)
+    React.useEffect(() => {
+      if (!isRestoringRef.current) {
+        formRef.current = form;
+        // Save to localStorage as backup
+        if (show) {
+          localStorage.setItem('productFormBackup', JSON.stringify(form));
+        }
+      }
+    }, [form, show]);
+    
+    React.useEffect(() => {
+      if (!isRestoringRef.current) {
+        selectedImagesRef.current = selectedImages;
+      }
+    }, [selectedImages]);
+
+    // Initialize modal categories when modal opens
+    React.useEffect(() => {
+      if (show) {
+        console.log('=== ProductModal OPENED ===');
+        console.log('Current form state:', form);
+        console.log('Product prop:', product);
+        console.log('Categories available:', categories?.length || 0);
+        
+        const currentCategories = Array.isArray(categories) ? categories : [];
+        setModalCategories([...currentCategories]);
+        
+        // Try to restore from localStorage if available
+        const backup = localStorage.getItem('productFormBackup');
+        if (backup && !product) {
+          try {
+            const backupForm = JSON.parse(backup);
+            console.log('📦 Restoring form from localStorage backup:', backupForm);
+            isRestoringRef.current = true;
+            setForm(backupForm);
+            setTimeout(() => {
+              isRestoringRef.current = false;
+            }, 100);
+          } catch (e) {
+            console.log('❌ Failed to restore from backup:', e);
+          }
+        }
+      } else {
+        console.log('=== ProductModal CLOSED ===');
+        // Clear backup when modal closes
+        localStorage.removeItem('productFormBackup');
+      }
+    }, [show]); // Removed product dependency to prevent re-initialization
 
     React.useEffect(() => {
-      if (product) setForm(product);
-    }, [product]);
+      if (product && show) {
+        console.log('Setting form from product:', product);
+        isRestoringRef.current = true;
+        setForm(product);
+        setTimeout(() => {
+          isRestoringRef.current = false;
+        }, 100);
+      }
+    }, [product, show]); // Added show dependency to only update when modal is open
+    
     React.useEffect(() => {
       if (newCategoryId) {
+        console.log('Setting new category ID:', newCategoryId);
         setForm(f => ({ ...f, idCategory: newCategoryId }));
+        
+        // Add new category to modal categories if not already present
+        const currentCategories = Array.isArray(categories) ? categories : [];
+        const newCategory = currentCategories.find(cat => cat.idCategory === newCategoryId);
+        console.log('Found new category:', newCategory);
+        if (newCategory) {
+          setModalCategories(prev => {
+            const exists = prev.find(cat => cat.idCategory === newCategoryId);
+            if (!exists) {
+              console.log('Adding new category to modal categories:', newCategory);
+              return [...prev, newCategory];
+            }
+            return prev;
+          });
+        }
       }
-    }, [newCategoryId]);
+    }, [newCategoryId]); // Removed categories and modalCategories dependencies
+    
+    // Update modalCategories when global categories change (after adding new category)
+    React.useEffect(() => {
+      if (show && Array.isArray(categories)) {
+        console.log('🔄 Updating modal categories from global categories:', categories.length);
+        console.log('Current modal categories:', modalCategories.length);
+        console.log('Global categories:', categories.map(c => ({ id: c.idCategory, name: c.namaCategory })));
+        
+        // Always update modalCategories to match global categories
+        setModalCategories([...categories]);
+        console.log('✅ Modal categories updated successfully');
+      }
+    }, [categories, show]);
+    
+    // Additional effect to ensure modalCategories is updated after new category is added
+    React.useEffect(() => {
+      if (newCategoryId && Array.isArray(categories) && categories.length > 0) {
+        console.log('🆕 New category detected, forcing modalCategories update');
+        const updatedCategories = [...categories];
+        setModalCategories(updatedCategories);
+        console.log('Updated modalCategories:', updatedCategories.map(c => ({ id: c.idCategory, name: c.namaCategory })));
+      }
+    }, [newCategoryId, categories]);
+    
+    // Handle opening category modal
+    const handleOpenCategoryModal = React.useCallback(() => {
+      console.log('🏷️ Opening category modal');
+      console.log('Current form before category modal:', formRef.current);
+      console.log('Current selected images:', selectedImagesRef.current);
+      // Save current state before opening category modal
+      localStorage.setItem('productFormBeforeCategory', JSON.stringify({
+        form: formRef.current,
+        selectedImages: selectedImagesRef.current.length
+      }));
+      setShowCategoryModal(true);
+    }, []);
+    
+    // Handle category modal close - restore form if needed
+    React.useEffect(() => {
+      if (!showCategoryModal && show) {
+        console.log('🏷️ Category modal closed, checking form state');
+        // Small delay to ensure category updates are processed
+        setTimeout(() => {
+          const backup = localStorage.getItem('productFormBeforeCategory');
+          if (backup) {
+            try {
+              const { form: backupForm } = JSON.parse(backup);
+              console.log('📦 Backup form found:', backupForm);
+              
+              // Only restore if current form is different and seems to be reset
+              const currentFormEmpty = !form.productName && !form.description && form.price === 0;
+              const backupFormHasData = backupForm.productName || backupForm.description || backupForm.price > 0;
+              
+              console.log('Form comparison:', { currentFormEmpty, backupFormHasData });
+              
+              if (currentFormEmpty && backupFormHasData) {
+                console.log('🔄 Form appears to be reset, restoring from backup');
+                isRestoringRef.current = true;
+                setForm(backupForm);
+                setTimeout(() => {
+                  isRestoringRef.current = false;
+                }, 100);
+              } else {
+                console.log('✅ Form state is preserved, no restoration needed');
+              }
+              
+              localStorage.removeItem('productFormBeforeCategory');
+            } catch (e) {
+              console.log('❌ Failed to restore from category backup:', e);
+            }
+          }
+        }, 100);
+      }
+    }, [showCategoryModal, show]); // Removed form dependency to prevent excessive re-renders
+
     const handleChange = (e) => {
       const { name, value, type, checked } = e.target;
-      setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+      const newForm = { ...form, [name]: type === 'checkbox' ? checked : value };
+      setForm(newForm);
     };
+    
     const handleImage = (url) => {
       setForm({ ...form, imageUrl: url });
     };
+    
     const handleFileChange = (e) => {
       const files = Array.from(e.target.files);
       setSelectedImages(files);
     };
+    
     const handleSubmit = async (e) => {
       e.preventDefault();
       setSaving(true);
       setErr('');
       try {
+        // Clear backup on successful submit
+        localStorage.removeItem('productFormBackup');
+        localStorage.removeItem('productFormBeforeCategory');
+        
         // Selalu gunakan FormData
         const formData = new FormData();
         
@@ -203,7 +367,9 @@ const SellerDashboard = () => {
         setSaving(false);
       }
     };
+    
     if (!show) return null;
+    
     return (
       <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg border w-full max-w-md transition-all">
@@ -211,33 +377,33 @@ const SellerDashboard = () => {
           {err && <div className="text-red-500 mb-4 text-center">{err}</div>}
           <div className="mb-4">
             <label className="block mb-2 font-medium">Nama Produk</label>
-            <input name="productName" value={form.productName} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
+            <input name="productName" value={form.productName || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required />
           </div>
           <div className="mb-4">
             <label className="block mb-2 font-medium">Deskripsi</label>
-            <textarea name="description" value={form.description} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" rows={2} />
+            <textarea name="description" value={form.description || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" rows={2} />
           </div>
           <div className="mb-4">
             <label className="block mb-2 font-medium">Harga</label>
-            <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+            <input name="price" type="number" value={form.price || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
           </div>
           <div className="mb-4">
             <label className="block mb-2 font-medium">Stok</label>
-            <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
+            <input name="stock" type="number" value={form.stock || 0} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required min={0} />
           </div>
           <div className="mb-4 flex items-center gap-2">
             <label className="block mb-2 font-medium">Kategori</label>
-            <select name="idCategory" value={form.idCategory} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition">
+            <select name="idCategory" value={form.idCategory || ''} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition">
               <option value="">Pilih Kategori</option>
-              {categories.map(cat => (
+              {Array.isArray(modalCategories) && modalCategories.map(cat => (
                 <option key={cat.idCategory} value={cat.idCategory}>{cat.namaCategory}</option>
               ))}
             </select>
-            <button type="button" onClick={() => setShowCategoryModal(true)} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition">Tambah Kategori</button>
+            <button type="button" onClick={handleOpenCategoryModal} className="ml-2 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition">Tambah Kategori</button>
           </div>
           <div className="mb-4">
             <label className="block mb-2 font-medium">Kategori Umum *</label>
-            <select name="generalCategory" value={form.generalCategory} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required>
+            <select name="generalCategory" value={form.generalCategory || 'LAINNYA'} onChange={handleChange} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-200 transition" required>
               <option value="ELEKTRONIK">Elektronik</option>
               <option value="FURNITUR">Furnitur</option>
               <option value="PAKAIAN">Pakaian</option>
@@ -275,7 +441,7 @@ const SellerDashboard = () => {
             )}
           </div>
           <div className="mb-4 flex items-center gap-2">
-            <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} id="isActive" />
+            <input type="checkbox" name="isActive" checked={form.isActive || false} onChange={handleChange} id="isActive" />
             <label htmlFor="isActive">Aktifkan Produk</label>
           </div>
           <div className="flex justify-end gap-4 mt-6">
@@ -285,7 +451,15 @@ const SellerDashboard = () => {
         </form>
       </div>
     );
-  };
+  }, (prevProps, nextProps) => {
+    // Only re-render if these specific props change
+    return (
+      prevProps.show === nextProps.show &&
+      prevProps.product === nextProps.product &&
+      prevProps.tokoId === nextProps.tokoId &&
+      prevProps.newCategoryId === nextProps.newCategoryId
+    );
+  });
 
   // Modal Store Form
   const StoreModal = ({ show, onClose, onSave, store }) => {
@@ -636,18 +810,29 @@ const SellerDashboard = () => {
       </div>
 
       {/* Modals */}
-      <ProductModal show={showProductModal} onClose={() => setShowProductModal(false)} onSave={() => { setShowProductModal(false); fetchStoreAndProducts(); setNewCategoryId(null); }} product={editProduct} tokoId={store?.idToko} onCategoryAdded={cat => {
-        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
-          setCategories(res.data.content || []);
-        });
-      }} newCategoryId={newCategoryId} />
+      <ProductModal 
+        show={showProductModal} 
+        onClose={() => setShowProductModal(false)} 
+        onSave={() => { 
+          setShowProductModal(false); 
+          fetchStoreAndProducts(user, currentPage, searchTerm, false); 
+          setNewCategoryId(null); 
+        }} 
+        product={editProduct} 
+        tokoId={store?.idToko} 
+        onCategoryAdded={cat => {
+          // Kategori sudah ditambahkan ke state melalui CategoryModal onSave
+          // Tidak perlu refresh lagi di sini
+        }} 
+        newCategoryId={newCategoryId} 
+      />
       <StoreModal show={showStoreModal} onClose={() => setShowStoreModal(false)} onSave={() => { setShowStoreModal(false); fetchStoreAndProducts(); }} store={store} />
-      <CategoryModal show={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSave={cat => {
+      <CategoryModal show={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSave={async cat => {
+        // Hanya tutup CategoryModal dan update kategori baru
         setShowCategoryModal(false);
         setNewCategoryId(cat.idCategory);
-        api.get(`/api/categories/toko/${store.idToko}?page=0&size=100`).then(res => {
-          setCategories(res.data.content || []);
-        });
+        await refreshCategories();
+        // Jangan pernah setShowProductModal(false) atau setEditProduct(null) di sini!
       }} />
     </div>
   );
