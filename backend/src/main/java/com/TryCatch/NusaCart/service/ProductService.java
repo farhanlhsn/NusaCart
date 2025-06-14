@@ -48,6 +48,9 @@ public class ProductService {
     @Autowired
     private ImageUploadService imageUploadService;
     
+    @Autowired
+    private WishlistService wishlistService;
+    
     public ProductService(ProductRepository productRepository, TokoRepository tokoRepository, 
                          CategoryRepository categoryRepository, UserService userService) {
         this.productRepository = productRepository;
@@ -178,7 +181,24 @@ public class ProductService {
         log.info("Getting product with ID: {}", productId);
         ProductEntity product = productRepository.findByProductId(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Produk tidak ditemukan dengan ID: " + productId));
-        return new ProductDTO(product);
+        
+        ProductDTO productDTO = new ProductDTO(product);
+        
+        // Check if product is in user's wishlist
+        try {
+            UserEntity currentUser = userService.getCurrentUser();
+            if (currentUser != null) {
+                boolean isWishlisted = wishlistService.isProductInUserWishlist(productId, currentUser);
+                productDTO.setIsWishlisted(isWishlisted);
+            } else {
+                productDTO.setIsWishlisted(false);
+            }
+        } catch (Exception e) {
+            log.warn("Could not check wishlist status for product {}: {}", productId, e.getMessage());
+            productDTO.setIsWishlisted(false);
+        }
+        
+        return productDTO;
     }
     
     // Get products by toko ID

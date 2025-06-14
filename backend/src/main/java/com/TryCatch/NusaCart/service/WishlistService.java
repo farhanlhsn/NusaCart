@@ -6,7 +6,6 @@ import com.TryCatch.NusaCart.entity.ProductEntity;
 import com.TryCatch.NusaCart.entity.UserEntity;
 import com.TryCatch.NusaCart.entity.WishlistEntity;
 import com.TryCatch.NusaCart.repository.ProductRepository;
-import com.TryCatch.NusaCart.repository.UserRepository;
 import com.TryCatch.NusaCart.repository.WishlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -16,7 +15,10 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class WishlistService {
 
     @Autowired
@@ -24,9 +26,6 @@ public class WishlistService {
 
     @Autowired
     private ProductRepository productRepository;
-
-    @Autowired
-    private UserRepository userRepository;
 
     private UserEntity getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -72,20 +71,36 @@ public class WishlistService {
     // Get wishlist berdasarkan  current user
     public WishlistResponseDTO getCurrentUserWishlist() {
         UserEntity currentUser = getCurrentUser();
-        return getWishlistByUserId(currentUser.getUserId());
+        return getOrCreateWishlistByUserId(currentUser);
     }
 
-    // Get/Create Wishlist berdasarkan userId
-    public WishlistResponseDTO getWishlistByUserId(Integer userId) {
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
-        WishlistEntity wishlist = wishlistRepository.findByUserId(user)
+    public List<WishlistResponseDTO> getAllWishlists() {
+        return wishlistRepository.findAll()
+                .stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public WishlistResponseDTO getWishlistById(Integer id) {
+        WishlistEntity wishlist = wishlistRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
+        return convertToResponseDTO(wishlist);
+    }
+
+    public WishlistDTO createWishlist(WishlistDTO dto) {
+        WishlistEntity entity = convertToEntity(dto);
+        return convertToDTO(wishlistRepository.save(entity));
+    }
+
+    public WishlistResponseDTO getOrCreateWishlistByUserId(UserEntity userId) {
+        // Cari wishlist berdasarkan userId
+        WishlistEntity wishlist = wishlistRepository.findByUserId(userId)
                 .orElse(null);
 
-        // Jika wishlist belum ada, buat baru
-        if (wishlist == null){
+        // Jika tidak ada, buat wishlist baru
+        if (wishlist == null) {
             wishlist = new WishlistEntity();
-            wishlist.setUserId(user);
+            wishlist.setUserId(userId);
             wishlist.setProducts(new ArrayList<>());
             wishlist = wishlistRepository.save(wishlist);
         }
@@ -93,7 +108,38 @@ public class WishlistService {
         return convertToResponseDTO(wishlist);
     }
 
-    // Tambahkan produk pada wishlist
+    public WishlistDTO updateWishlist(Integer id, WishlistDTO dto) {
+        WishlistEntity existing = wishlistRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
+        existing.setUserId(getCurrentUser());
+        existing.setProducts(dto.getProducts());
+        return convertToDTO(wishlistRepository.save(existing));
+    }
+
+    public void deleteWishlist(Integer id) {
+        wishlistRepository.deleteById(id);
+    }
+
+    public WishlistResponseDTO addProductToWishlist(Integer wishlistId, Integer productId) {
+        WishlistEntity wishlist = wishlistRepository.findById(wishlistId)
+                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
+        ProductEntity product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        wishlist.addToWishlist(product);
+        return convertToResponseDTO(wishlistRepository.save(wishlist));
+    }
+
+    public WishlistResponseDTO removeProductFromWishlist(Integer wishlistId, Integer productId) {
+        WishlistEntity wishlist = wishlistRepository.findById(wishlistId)
+                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
+        ProductEntity product = productRepository.findByProductId(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        wishlist.removeFromWishlist(product);
+        return convertToResponseDTO(wishlistRepository.save(wishlist));
+    }
+
     public WishlistResponseDTO addProductToCurrentUserWishlist(Integer productId) {
         UserEntity currentUser = getCurrentUser();
         WishlistEntity wishlist = wishlistRepository.findByUserId(currentUser)
@@ -136,6 +182,23 @@ public class WishlistService {
         wishlist.removeFromWishlist(product);
         return convertToResponseDTO(wishlistRepository.save(wishlist));
     }
+
+    public boolean isProductInUserWishlist(Integer productId, UserEntity user) {
+        try {
+            WishlistEntity wishlist = wishlistRepository.findByUserId(user).orElse(null);
+            if (wishlist == null) {
+                return false;
+            }
+            
+            ProductEntity product = productRepository.findByProductId(productId).orElse(null);
+            if (product == null) {
+                return false;
+            }
+            
+            return wishlist.getProducts().contains(product);
+        } catch (Exception e) {
+            log.error("Error checking if product {} is in user wishlist: {}", productId, e.getMessage());
+            return false;
+        }
+    }
 }
-
-

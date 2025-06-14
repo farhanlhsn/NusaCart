@@ -31,6 +31,7 @@ public class ProductDTO {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean isWishlisted;
     
     // Constructor from ProductEntity
     public ProductDTO(ProductEntity product) {

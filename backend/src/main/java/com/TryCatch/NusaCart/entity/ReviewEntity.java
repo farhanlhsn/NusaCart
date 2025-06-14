@@ -19,8 +19,8 @@ import lombok.*;
 public class ReviewEntity {
 
     @Id
-    @Column(name = "review_id", nullable = false, unique = true)
-    private String reviewId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer reviewId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)

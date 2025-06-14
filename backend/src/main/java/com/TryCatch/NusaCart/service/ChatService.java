@@ -50,8 +50,9 @@ public class ChatService implements ChatServiceInterface {
 }
 
     @Override
-    public List<BuyerSellerChatDTO> getChatsBetween(Integer senderId, Integer receiverId) {
-        return buyerSellerChatRepository.findBySenderIdAndReceiverId(senderId, receiverId)
+    public List<BuyerSellerChatDTO> getChatsBetween(Integer user1, Integer user2) {
+        return buyerSellerChatRepository
+                .findBySenderIdAndReceiverIdOrSenderIdAndReceiverId(user1, user2, user2, user1)
                 .stream()
                 .map(entity -> BuyerSellerChatDTO.builder()
                         .chatId(entity.getChatId())
@@ -64,4 +65,5 @@ public class ChatService implements ChatServiceInterface {
                         .build())
                 .collect(Collectors.toList());
     }
+
 }

@@ -5,6 +5,7 @@ import useCartStore from '../stores/cartStore';
 import useAuthStore from '../stores/authStore';
 import useWishlistStore from '../stores/wishlistStore';
 import ProductReviews from './ProductReviews';
+import ChatButton from './ChatButton';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -280,6 +281,19 @@ const ProductDetail = () => {
                     : '♡ Add to Wishlist'
                 }
               </button>
+            </div>
+
+            {/* Chat with Store */}
+            <div className="mt-4 pt-4 border-t">
+              <ChatButton
+                storeId={currentProduct.tokoId}
+                storeName={currentProduct.tokoName}
+                variant="outline"
+                className="w-full justify-center"
+                size="large"
+              >
+                Chat dengan {currentProduct.tokoName}
+              </ChatButton>
             </div>
           </div>
         </div>
