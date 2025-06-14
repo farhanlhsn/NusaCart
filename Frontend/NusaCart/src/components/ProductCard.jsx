@@ -27,12 +27,27 @@ const ProductCard = ({ product }) => {
 
     // Ambil gambar produk: imageUrl (string) atau imageUrls[0] (array)
     let imageSrc = null;
+    
+    // Debug log untuk melihat data gambar (hanya untuk produk pertama)
+    if (process.env.NODE_ENV === 'development' && product.productId && product.productId <= 3) {
+        console.log(`ProductCard ${product.productId}:`, {
+            imageUrl: product.imageUrl,
+            imageUrls: product.imageUrls,
+            hasImageUrls: product.imageUrls && product.imageUrls.length > 0
+        });
+    }
+    
     if (product.imageUrl) {
-        imageSrc = `http://localhost:6060${product.imageUrl}`;
+        imageSrc = product.imageUrl.startsWith('http') 
+            ? product.imageUrl 
+            : `http://localhost:6060${product.imageUrl}`;
     } else if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
-        imageSrc = product.imageUrls[0].startsWith('http')
-            ? product.imageUrls[0]
-            : `http://localhost:6060${product.imageUrls[0]}`;
+        const firstImage = product.imageUrls[0];
+        if (firstImage) {
+            imageSrc = firstImage.startsWith('http')
+                ? firstImage
+                : `http://localhost:6060${firstImage}`;
+        }
     }
 
     return (
@@ -59,15 +74,27 @@ const ProductCard = ({ product }) => {
                         src={imageSrc}
                         alt={product.productName}
                         className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => {
+                            console.log(`Failed to load image: ${imageSrc}`);
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                        onLoad={() => {
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log(`Successfully loaded image: ${imageSrc}`);
+                            }
+                        }}
                     />
-                ) : (
-                    <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100">
-                        <svg className="w-14 h-14 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                )}
-                
+                ) : null}
+                <div 
+                    className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400"
+                    style={{ display: imageSrc ? 'none' : 'flex' }}
+                >
+                    <svg className="w-14 h-14 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-xs text-center px-2">Tidak ada gambar</span>
+                </div>
             </div>
             
             {/* Informasi produk */}
@@ -82,10 +109,18 @@ const ProductCard = ({ product }) => {
                             <svg className="w-4 h-4 mr-1 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                             </svg>
-                            <span className="truncate">{product.tokoName || 'Toko Populer'}</span>
+                            <button 
+                                className="truncate hover:text-red-600 transition-colors text-left"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/toko/${product.idToko}`);
+                                }}
+                            >
+                                {product.tokoName || 'Toko Populer'}
+                            </button>
                         </div>
                         <ChatButton
-                            storeId={product.tokoId}
+                            storeId={product.idToko}
                             storeName={product.tokoName}
                             variant="ghost"
                             size="small"

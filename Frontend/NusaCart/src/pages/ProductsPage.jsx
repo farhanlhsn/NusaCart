@@ -10,14 +10,15 @@ export default function ProductsPage() {
     minPrice: '',
     maxPrice: '',
     sortBy: '',
-    sortDirection: 'asc'
+    sortDirection: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [globalTotal, setGlobalTotal] = useState(0);
   
   // Extract pagination data with defaults
   const currentPage = (pagination.currentPage || 0) + 1; // Convert from 0-based to 1-based
   const totalPages = pagination.totalPages || 0;
-  const pageSize = pagination.size || 20;
+  const pageSize = pagination.size || 12; // Changed from 20 to 12 products per page
   const totalItems = pagination.totalElements || 0;
 
   // General categories from backend enum
@@ -48,15 +49,22 @@ export default function ProductsPage() {
     // eslint-disable-next-line
   }, []);
 
+  // Update global total when pagination changes
+  useEffect(() => {
+    if (totalItems > 0) {
+      setGlobalTotal(totalItems);
+    }
+  }, [totalItems]);
+
   const applyFilters = (page = 0) => {
     const cleanFilters = Object.fromEntries(
       Object.entries(filters).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
     );
     
     if (Object.keys(cleanFilters).length === 0) {
-      fetchProducts(page, pageSize);
+      fetchProducts(page, 12);
     } else {
-      fetchProductsWithFilters(page, pageSize, cleanFilters);
+      fetchProductsWithFilters(page, 12, cleanFilters);
     }
   };
 
@@ -75,14 +83,44 @@ export default function ProductsPage() {
       minPrice: '',
       maxPrice: '',
       sortBy: '',
-      sortDirection: 'asc'
+      sortDirection: ''
     });
-    fetchProducts(0, pageSize); // Fetch without filters
+    fetchProducts(0, 12); // Fetch without filters, 12 products per page
   };
 
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages) return;
     applyFilters(page - 1); // Convert from 1-based to 0-based for API
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top when changing page
+  };
+
+  // Generate pagination numbers with ellipsis for better UX
+  const generatePaginationNumbers = () => {
+    const delta = 2; // Number of pages to show around current page
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else {
+      if (totalPages > 1) {
+        rangeWithDots.push(totalPages);
+      }
+    }
+
+    return rangeWithDots;
   };
 
   return (
@@ -199,62 +237,127 @@ export default function ProductsPage() {
                 <span className="ml-4 text-gray-600 text-lg">Memuat produk...</span>
               </div>
             ) : error ? (
-              <div className="text-center py-20">
-                <p className="text-red-600 font-semibold">{error}</p>
+              <div className="text-center py-20 bg-white rounded-lg shadow-md p-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Terjadi Kesalahan</h3>
+                <p className="text-red-600 font-medium mb-4">{error}</p>
+                <div className="space-y-2 text-sm text-gray-600 mb-6">
+                  <p>Kemungkinan penyebab:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Server backend tidak berjalan</li>
+                    <li>Koneksi internet bermasalah</li>
+                    <li>Database tidak tersedia</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Muat Ulang Halaman
+                  </button>
+                  <button 
+                    onClick={() => applyFilters(0)}
+                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Coba Lagi
+                  </button>
+                </div>
               </div>
             ) : (
               <>
                 {products.length === 0 ? (
-                  <div className="text-center py-20">
+                  <div className="text-center py-20 bg-white rounded-lg shadow-md p-8">
                     <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    <p className="text-gray-500">Belum ada produk tersedia.</p>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak Ada Produk Ditemukan</h3>
+                    <p className="text-gray-500 mb-6">Belum ada produk yang tersedia saat ini.</p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <button 
+                        onClick={() => applyFilters(0)}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Refresh Data
+                      </button>
+                      <button 
+                        onClick={() => window.location.href = '/'}
+                        className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Kembali ke Beranda
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {products.map(product => (
-                    <ProductCard key={product.productId || product.id} product={product} />
-                  ))}
-                </div>
-                {/* Pagination Info & Controls */}
-                <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4">
-                  <div className="text-gray-500 text-sm">
-                    {`Menampilkan data ${(currentPage-1)*pageSize+1} hingga ${Math.min(currentPage*pageSize, totalItems)} dari ${totalItems} entri`}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Sebelumnya
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1 text-sm border rounded-md ${
-                          page === currentPage
-                            ? 'bg-red-500 text-white border-red-500'
-                            : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Selanjutnya
-                    </button>
-                  </div>
-                </div>
+                      {products.map(product => (
+                        <ProductCard key={product.productId || product.id} product={product} />
+                      ))}
+                    </div>
+                    
+                    {/* Pagination Info & Controls */}
+                    {products.length > 0 && (
+                      <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4">
+                        <div className="text-gray-500 text-sm">
+                          {products.length > 0 ? (
+                            (() => {
+                              const startItem = (currentPage - 1) * 12 + 1;
+                              const endItem = (currentPage - 1) * 12 + products.length;
+                              const total = globalTotal > 0 ? globalTotal : (totalItems > 0 ? totalItems : ((currentPage - 1) * 12 + products.length));
+                              
+                              return <>Menampilkan {startItem} - {endItem} dari {total} produk</>;
+                            })()
+                          ) : (
+                            <>Tidak ada produk ditemukan</>
+                          )}
+                        </div>
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                              className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              ← Sebelumnya
+                            </button>
+                            
+                            {generatePaginationNumbers().map((page, index) => (
+                              page === '...' ? (
+                                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400">...</span>
+                              ) : (
+                                <button
+                                  key={page}
+                                  onClick={() => handlePageChange(page)}
+                                  className={`px-3 py-2 text-sm border rounded-md transition-colors ${
+                                    page === currentPage
+                                      ? 'bg-red-500 text-white border-red-500 shadow-md'
+                                      : 'border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              )
+                            ))}
+                            
+                            <button
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                              className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Selanjutnya →
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
-          </>
-        )}
           </div>
         </div>
       </div>

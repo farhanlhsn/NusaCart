@@ -24,6 +24,7 @@ import PaymentPage from './PaymentPage';
 import PromoListPage from './PromoListPage';
 import CategoryPage from './CategoryPage';
 import CategoriesListPage from './CategoriesListPage';
+import TokoPage from './TokoPage';
 
 export const router = createBrowserRouter([
   {
@@ -130,6 +131,10 @@ export const router = createBrowserRouter([
       {
         path: "/categories/:categoryValue",
         element: <CategoryPage />,
+      },
+      {
+        path: "/toko/:id",
+        element: <TokoPage />,
       },
     ],
   },

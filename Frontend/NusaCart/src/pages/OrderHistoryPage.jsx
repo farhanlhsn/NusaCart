@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import useOrderStore from '../stores/orderStore';
 import useTrackingStore from '../stores/trackingStore';
 import useAuthStore from '../stores/authStore';
+import useReviewStore from '../stores/reviewStore';
 
 const OrderHistoryPage = () => {
   const { orders, loading, error, fetchOrders } = useOrderStore();
   const { getTrackingTimeline, fetchTrackingByOrder, loading: trackingLoading } = useTrackingStore();
+  const { hasUserReviewedProduct, fetchReviewsByProduct } = useReviewStore();
   const navigate = useNavigate();
   
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -23,6 +25,20 @@ const OrderHistoryPage = () => {
       navigate('/login');
     }
   }, [user, fetchOrders, navigate]);
+
+  // Fetch reviews for products in delivered orders to check review status
+  useEffect(() => {
+    if (orders && orders.length > 0 && user?.userId) {
+      const deliveredOrders = orders.filter(order => order.orderStatus === 'DELIVERED');
+      deliveredOrders.forEach(order => {
+        order.items.forEach(item => {
+          if (item.productId) {
+            fetchReviewsByProduct(item.productId);
+          }
+        });
+      });
+    }
+  }, [orders, user?.userId, fetchReviewsByProduct]);
 
   // Debug logging untuk melihat struktur data order
   useEffect(() => {
@@ -100,6 +116,26 @@ const OrderHistoryPage = () => {
     }
   };
 
+  // Check if there are products in the order that haven't been reviewed yet
+  const hasUnreviewedProducts = (order) => {
+    if (!order.items || !user?.userId) return false;
+    
+    return order.items.some(item => {
+      if (!item.productId) return false;
+      return !hasUserReviewedProduct(item.productId, user.userId);
+    });
+  };
+
+  // Get count of unreviewed products in an order
+  const getUnreviewedProductsCount = (order) => {
+    if (!order.items || !user?.userId) return 0;
+    
+    return order.items.filter(item => {
+      if (!item.productId) return false;
+      return !hasUserReviewedProduct(item.productId, user.userId);
+    }).length;
+  };
+
   if (!user) {
     return null; // Will redirect to login
   }
@@ -130,6 +166,26 @@ const OrderHistoryPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Breadcrumbs */}
+      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
+        <button 
+          onClick={() => navigate('/')} 
+          className="hover:text-red-600 cursor-pointer transition-colors"
+        >
+          Beranda
+        </button>
+        <span>|</span>
+        <button 
+          onClick={() => navigate('/profile')} 
+          className="hover:text-red-600 cursor-pointer transition-colors"
+        >
+          Profil
+        </button>
+        <span>|</span>
+        <span className="text-red-600 font-medium">Riwayat Pesanan</span>
+      </div>
+      {/* End Breadcrumbs */}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
         <p className="text-gray-600 mt-2">Lihat dan lacak semua pesanan Anda</p>
@@ -182,9 +238,19 @@ const OrderHistoryPage = () => {
                     {order.items.map((item, index) => (
                       <div key={index} className="flex items-center space-x-4">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {item.productName}
-                          </p>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm font-medium text-gray-900">
+                              {item.productName}
+                            </p>
+                            {order.orderStatus === 'DELIVERED' && item.productId && user?.userId && hasUserReviewedProduct(item.productId, user.userId) && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                Sudah direview
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600">
                             Quantity: {item.quantity} × {formatPrice(item.price)}
                           </p>
@@ -226,16 +292,29 @@ const OrderHistoryPage = () => {
                       Lacak Pesanan
                     </button>
                     
-                    {order.orderStatus === 'DELIVERED' && (
+                    {order.orderStatus === 'DELIVERED' && hasUnreviewedProducts(order) && (
                       <button
                         onClick={() => {
                           if (order.items && order.items.length > 0) {
-                            if (order.items.length === 1) {
-                              // Jika hanya 1 produk, langsung handle review
-                              handleReviewProduct(order.items[0]);
+                            const unreviewedItems = order.items.filter(item => {
+                              if (!item.productId || !user?.userId) return false;
+                              return !hasUserReviewedProduct(item.productId, user.userId);
+                            });
+                            
+                            if (unreviewedItems.length === 0) {
+                              alert('Semua produk dalam order ini sudah direview');
+                              return;
+                            }
+                            
+                            if (unreviewedItems.length === 1) {
+                              // Jika hanya 1 produk yang belum direview, langsung handle review
+                              handleReviewProduct(unreviewedItems[0]);
                             } else {
-                              // Jika multiple products, tampilkan modal untuk pilih produk
-                              setSelectedOrder(order);
+                              // Jika multiple products yang belum direview, tampilkan modal untuk pilih produk
+                              setSelectedOrder({
+                                ...order,
+                                items: unreviewedItems // Only show unreviewed items in modal
+                              });
                               setShowReviewSelection(true);
                             }
                           } else {
@@ -244,11 +323,22 @@ const OrderHistoryPage = () => {
                         }}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium w-full md:w-auto"
                       >
-                        {order.items?.length > 1 
-                          ? `Tulis Ulasan (${order.items.length} produk)` 
-                          : 'Tulis Ulasan'
-                        }
+                        {(() => {
+                          const unreviewedCount = getUnreviewedProductsCount(order);
+                          return unreviewedCount > 1 
+                            ? `Tulis Ulasan (${unreviewedCount} produk)` 
+                            : 'Tulis Ulasan';
+                        })()}
                       </button>
+                    )}
+                    
+                    {order.orderStatus === 'DELIVERED' && !hasUnreviewedProducts(order) && (
+                      <div className="flex items-center text-green-600 font-medium">
+                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Semua produk sudah direview
+                      </div>
                     )}
                   </div>
                 </div>

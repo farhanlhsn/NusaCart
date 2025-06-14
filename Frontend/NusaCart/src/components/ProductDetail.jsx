@@ -250,20 +250,20 @@ const ProductDetail = () => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-2">Description</h3>
+            <h3 className="text-lg font-semibold mb-2">Deskripsi</h3>
             <p className="text-gray-700 leading-relaxed">
               {currentProduct.description || 'No description available.'}
             </p>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-2">Store Information</h3>
+            <h3 className="text-lg font-semibold mb-2">Informasi Toko</h3>
             <p className="text-gray-700">
-              <span className="font-medium">Store:</span> {currentProduct.tokoName}
+              <span className="font-medium">Toko:</span> <button onClick={() => navigate(`/toko/${currentProduct.idToko}`)} className="text-blue-600 hover:underline">{currentProduct.tokoName}</button>
             </p>
             {currentProduct.categoryName && (
               <p className="text-gray-700">
-                <span className="font-medium">Category:</span> {currentProduct.categoryName}
+                <span className="font-medium">Kategori:</span> {currentProduct.categoryName}
               </p>
             )}
           </div>
@@ -272,7 +272,7 @@ const ProductDetail = () => {
           <div className="border-t pt-6">
             <div className="flex items-center space-x-4 mb-6">
               <div className="flex items-center space-x-3">
-                <label className="text-sm font-medium text-gray-700">Quantity:</label>
+                <label className="text-sm font-medium text-gray-700">Jumlah:</label>
                 <div className="flex items-center border rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -303,7 +303,7 @@ const ProductDetail = () => {
                 disabled={currentProduct.stock === 0 || cartLoading}
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
               >
-                {cartLoading ? 'Adding...' : 'Add to Cart'}
+                {cartLoading ? 'Menambahkan...' : 'Tambah ke Keranjang'}
               </button>
               
               <button
@@ -318,8 +318,8 @@ const ProductDetail = () => {
                 {wishlistLoading 
                   ? '...' 
                   : isInWishlist(currentProduct.productId) 
-                    ? '❤️ In Wishlist' 
-                    : '♡ Add to Wishlist'
+                    ? '❤️ Di Wishlist' 
+                    : '♡ Tambah ke Wishlist'
                 }
               </button>
             </div>
@@ -327,13 +327,13 @@ const ProductDetail = () => {
             {/* Chat with Store */}
             <div className="mt-4 pt-4 border-t">
               <ChatButton
-                storeId={currentProduct.tokoId}
+                storeId={currentProduct.idToko}
                 storeName={currentProduct.tokoName}
                 variant="outline"
                 className="w-full justify-center"
                 size="large"
               >
-                Chat dengan {currentProduct.tokoName}
+                Chat dengan Toko {currentProduct.tokoName}
               </ChatButton>
             </div>
           </div>

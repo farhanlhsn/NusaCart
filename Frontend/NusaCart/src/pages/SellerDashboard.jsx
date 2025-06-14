@@ -503,7 +503,7 @@ const SellerDashboard = () => {
                 {store?.profilePictureToko ? (
                   <img src={`http://localhost:6060${store.profilePictureToko}`} alt="Toko" className="w-20 h-20 object-cover rounded-full" />
                 ) : (
-                  <span className="text-red-600 font-bold text-2xl">NT</span>
+                  <span className="text-red-600 font-bold text-2xl">{store?.namaToko?.slice(0,2).toUpperCase() || 'NT'}</span>
                 )}
               </div>
               <h2 className="font-extrabold text-lg text-center mb-1">{store?.namaToko || 'Nama Toko'}</h2>

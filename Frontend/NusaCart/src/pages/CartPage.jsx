@@ -182,20 +182,39 @@ export default function CartPage() {
                                                         className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 mr-4" 
                                                     />
                                                     <div className="flex items-center">
-                                                        <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                                                            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                                                            </svg>
+                                                        <div className="w-12 h-12 mr-4 shadow-lg">
+                                                            {storeData.store.profilePictureToko ? (
+                                                                <img 
+                                                                    src={storeData.store.profilePictureToko.startsWith('http') 
+                                                                        ? storeData.store.profilePictureToko 
+                                                                        : `http://localhost:6060${storeData.store.profilePictureToko}`} 
+                                                                    alt={storeData.store.name} 
+                                                                    className="w-12 h-12 rounded-xl object-cover" 
+                                                                />
+                                                            ) : (
+                                                                <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center">
+                                                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                                    </svg>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <h3 className="text-xl font-bold text-gray-800">{storeData.store.name}</h3>
-                                                            <p className="text-sm text-gray-600 flex items-center mt-1">
-                                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                                                                </svg>
-                                                                {storeData.store.location}
-                                                            </p>
-                                                        </div>
+                                                                                                <div>
+                                            <h3 className="text-xl font-bold text-gray-800">
+                                                <button 
+                                                    onClick={() => navigate(`/toko/${storeId}`)}
+                                                    className="hover:text-red-600 transition-colors cursor-pointer"
+                                                >
+                                                    {storeData.store.name}
+                                                </button>
+                                            </h3>
+                                            <p className="text-sm text-gray-600 flex items-center mt-1">
+                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                                </svg>
+                                                {storeData.store.location}
+                                            </p>
+                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

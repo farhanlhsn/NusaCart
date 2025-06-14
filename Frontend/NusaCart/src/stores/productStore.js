@@ -38,17 +38,20 @@ const useProductStore = create((set, get) => ({
       const response = await productAPI.getAll(validPage, validSize);
       const data = response.data;
       
+      const products = data.data || data.content || [];
+      
       set({
-        products: data.data || data.content || [],
+        products: products,
         pagination: {
           currentPage: data.currentPage || validPage,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || validSize
         },
         loading: false
       });
     } catch (error) {
+      console.error('ProductStore - Error fetching products:', error);
       set({ 
         error: error.response?.data?.message || 'Failed to fetch products',
         loading: false 
@@ -81,17 +84,20 @@ const useProductStore = create((set, get) => ({
       const response = await productAPI.getAllWithFilters(params.toString());
       const data = response.data;
       
+      const products = data.data || data.content || [];
+      
       set({
-        products: data.data || data.content || [],
+        products: products,
         pagination: {
           currentPage: data.currentPage || validPage,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || validSize
         },
         loading: false
       });
     } catch (error) {
+      console.error('ProductStore - Error fetching products with filters:', error);
       set({ 
         error: error.response?.data?.message || 'Failed to fetch products with filters',
         loading: false 
@@ -101,11 +107,6 @@ const useProductStore = create((set, get) => ({
 
   // Fetch product by ID
   fetchProductById: async (id) => {
-    // Debug logging hanya untuk development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ProductStore - fetchProductById called with id:', id, 'type:', typeof id);
-    }
-    
     // Validate id parameter
     if (!id || isNaN(parseInt(id))) {
       const error = `Invalid product ID: ${id}`;
@@ -120,15 +121,7 @@ const useProductStore = create((set, get) => ({
     
     set({ loading: true, error: null });
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('ProductStore - Making API call to fetch product:', id);
-      }
-      
       const response = await productAPI.getById(id);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('ProductStore - API response received:', response.data);
-      }
       
       set({
         currentProduct: response.data,
@@ -158,7 +151,7 @@ const useProductStore = create((set, get) => ({
         pagination: {
           currentPage: data.currentPage || page,
           totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
+          totalElements: data.totalItems || data.totalElements || 0,
           size: data.size || size
         },
         loading: false
