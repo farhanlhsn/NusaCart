@@ -28,30 +28,26 @@ const useWishlistStore = create(
       fetchWishlist: async (userId) => {
         set({ loading: true, error: null });
         try {
-          // Try to get all wishlists - backend might return user's wishlist based on auth
+          // Try to get current user's wishlist from backend
           const response = await wishlistAPI.getAll();
+          console.log('Wishlist API Response:', response.data);
+          
           let wishlistData = null;
           
-          // If response is an array, find the current user's wishlist
-          if (Array.isArray(response.data)) {
-            // If there are multiple wishlists, find the one for this user
-            const userWishlist = response.data.find(wishlist => 
-              wishlist.userId?.userId === userId
-            );
-            
-            if (userWishlist) {
-              wishlistData = userWishlist;
-            } else {
-              // If no wishlist found, create a mock empty wishlist structure
-              wishlistData = {
-                wishlistId: null,
-                userId: { userId: userId },
-                products: []
-              };
-            }
-          } else {
-            // If response is a single object, use it directly
+          // Backend returns nested structure: { status, message, data }
+          // The actual wishlist data is in response.data.data
+          if (response.data && response.data.data) {
+            wishlistData = response.data.data;
+          } else if (response.data && !response.data.data) {
+            // If response.data doesn't have nested data, use it directly
             wishlistData = response.data;
+          } else {
+            // If no data found, create empty wishlist structure
+            wishlistData = {
+              wishlistId: null,
+              userId: userId,
+              products: []
+            };
           }
           
           set({
@@ -135,8 +131,11 @@ const useWishlistStore = create(
             }
           }
 
-          const response = await wishlistAPI.addProduct(currentWishlist.wishlistId, productId);
-          const updatedWishlist = response.data;
+          const response = await wishlistAPI.addProduct(productId);
+          console.log('Add to wishlist response:', response.data);
+          
+          // Handle nested response structure
+          const updatedWishlist = response.data.data || response.data;
           
           set({
             wishlist: updatedWishlist,
@@ -217,8 +216,11 @@ const useWishlistStore = create(
 
         set({ loading: true, error: null });
         try {
-          const response = await wishlistAPI.removeProduct(wishlist.wishlistId, productId);
-          const updatedWishlist = response.data;
+          const response = await wishlistAPI.removeProduct(productId);
+          console.log('Remove from wishlist response:', response.data);
+          
+          // Handle nested response structure
+          const updatedWishlist = response.data.data || response.data;
           
           set({
             wishlist: updatedWishlist,
@@ -269,4 +271,4 @@ const useWishlistStore = create(
   )
 );
 
-export default useWishlistStore; 
+export default useWishlistStore;

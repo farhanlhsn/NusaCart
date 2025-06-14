@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, ShoppingCart, Eye, Trash2, Filter, Grid3X3, List, Star, Search, ChevronDown, Share2, Check, X, ChevronsUpDown } from "lucide-react";
+import { Heart, ShoppingCart, Eye, Trash2, Filter, Grid3X3, List, Star, Search, ChevronDown, Share2, Check, X, ChevronsUpDown, ImageIcon } from "lucide-react";
 import useWishlistStore from "../stores/wishlistStore";
 import useCartStore from "../stores/cartStore";
 import useAuthStore from "../stores/authStore";
@@ -181,7 +181,7 @@ export default function WishlistPage() {
     };
 
     // Image component with better loading and error handling
-    const ProductImage = ({ item, isSelected }) => {
+    const ProductImage = React.memo(({ item }) => {
         const [imageLoading, setImageLoading] = useState(true);
         const [imageError, setImageError] = useState(false);
         
@@ -212,63 +212,56 @@ export default function WishlistPage() {
         };
 
         return (
-            <div className="relative overflow-hidden rounded-t-2xl bg-gray-100">
+            <div className="relative overflow-hidden rounded-t-2xl bg-gray-100 h-64">
                 {imageLoading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
                     </div>
                 )}
                 
-                <img
-                    src={getImageUrl()}
-                    alt={item.productName || 'Product'}
-                    className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
-                    onLoad={handleImageLoad}
-                    onError={handleImageError}
-                    loading="lazy"
-                    style={{ display: imageLoading ? 'none' : 'block' }}
-                />
+                {imageError ? (
+                    <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
+                        <div className="text-center text-gray-500">
+                            <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No Image</p>
+                        </div>
+                    </div>
+                ) : (
+                    <img
+                        src={getImageUrl()}
+                        alt={item.productName || 'Product'}
+                        className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
+                        onLoad={handleImageLoad}
+                        onError={handleImageError}
+                        loading="lazy"
+                        style={{ display: imageLoading ? 'none' : 'block' }}
+                    />
+                 )}
                 
-                {/* Quick Actions Overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 
-                              transition-all duration-300 flex items-center justify-center gap-3">
-                    <button
-                        onClick={() => navigate(`/product/${item.productId}`)}
-                        className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center
-                                 opacity-0 group-hover:opacity-100 transition-all duration-300 
-                                 transform translate-y-4 group-hover:translate-y-0 hover:scale-110"
-                    >
-                        <Eye className="w-5 h-5 text-gray-700" />
-                    </button>
-                    
-                    <button
-                        onClick={() => handleAddToCart(item)}
-                        className="w-12 h-12 bg-red-500 rounded-full shadow-lg flex items-center justify-center
-                                 opacity-0 group-hover:opacity-100 transition-all duration-300 
-                                 transform translate-y-4 group-hover:translate-y-0 hover:scale-110
-                                 delay-75"
-                    >
-                        <ShoppingCart className="w-5 h-5 text-white" />
-                    </button>
-                </div>
+
             </div>
         );
-    };
+    });
 
     // Wishlist Item Card Component
-    const WishlistItemCard = ({ item }) => {
-        const isSelected = selectedItems.includes(item.productId);
+    const WishlistItemCard = ({ item, isSelected }) => {
 
         return (
-            <div className={`
-                group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl 
-                transition-all duration-300 transform hover:scale-[1.02] border-2
-                ${isSelected ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-100 hover:border-red-200'}
-            `}>
+            <div 
+                className={`
+                    group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl 
+                    transition-all duration-300 transform hover:scale-[1.02] border-2 cursor-pointer
+                    ${isSelected ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-100 hover:border-red-200'}
+                `}
+                onClick={() => navigate(`/product/${item.productId}`)}
+            >
                 {/* Selection Checkbox */}
                 <div className="absolute top-4 left-4 z-10">
                     <button
-                        onClick={() => handleSelectItem(item.productId)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectItem(item.productId);
+                        }}
                         className={`
                             w-6 h-6 rounded-lg border-2 flex items-center justify-center
                             transition-all duration-200 shadow-sm
@@ -285,7 +278,10 @@ export default function WishlistPage() {
                 {/* Remove Button */}
                 <div className="absolute top-4 right-4 z-10">
                     <button
-                        onClick={() => removeFromWishlist(item.productId)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromWishlist(item.productId);
+                        }}
                         className="w-8 h-8 bg-white rounded-full shadow-md hover:shadow-lg 
                                  flex items-center justify-center hover:bg-red-50 
                                  transition-all duration-200 group"
@@ -295,7 +291,7 @@ export default function WishlistPage() {
                 </div>
 
                 {/* Product Image */}
-                <ProductImage item={item} isSelected={isSelected} />
+                <ProductImage item={item} />
 
                 {/* Product Info */}
                 <div className="p-6">
@@ -340,19 +336,45 @@ export default function WishlistPage() {
                         </span>
                     </div>
 
-                    <button
-                        onClick={() => handleAddToCart(item)}
-                        disabled={(item.stock || 0) === 0}
-                        className="w-full bg-gradient-to-r from-red-500 to-red-600 
-                                 text-white py-3 rounded-xl font-semibold
-                                 hover:from-red-600 hover:to-red-700 
-                                 disabled:from-gray-300 disabled:to-gray-400
-                                 disabled:cursor-not-allowed
-                                 transition-all duration-200 shadow-lg hover:shadow-xl
-                                 transform hover:scale-[1.02]"
-                    >
-                        {(item.stock || 0) > 0 ? 'Tambah ke Keranjang' : 'Stok Habis'}
-                    </button>
+                    <div className="space-y-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(item);
+                            }}
+                            disabled={(item.stock || 0) === 0}
+                            className="w-full bg-gradient-to-r from-red-500 to-red-600 
+                                     text-white py-3 rounded-xl font-semibold
+                                     hover:from-red-600 hover:to-red-700 
+                                     disabled:from-gray-300 disabled:to-gray-400
+                                     disabled:cursor-not-allowed
+                                     transition-all duration-200 shadow-lg hover:shadow-xl
+                                     transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            {(item.stock || 0) > 0 ? 'Tambah ke Keranjang' : 'Stok Habis'}
+                        </button>
+                        
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Implement checkout functionality
+                            }}
+                            disabled={(item.stock || 0) === 0}
+                            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 
+                                     text-white py-3 rounded-xl font-semibold
+                                     hover:from-orange-600 hover:to-orange-700 
+                                     disabled:from-gray-300 disabled:to-gray-400
+                                     disabled:cursor-not-allowed
+                                     transition-all duration-200 shadow-lg hover:shadow-xl
+                                     transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            {(item.stock || 0) > 0 ? 'Checkout Sekarang' : 'Stok Habis'}
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -411,12 +433,24 @@ export default function WishlistPage() {
                             {/* Quick Actions */}
                             <div className="flex items-center gap-3">
                                 {filteredAndSortedItems.length > 0 && (
-                                    <button
-                                        onClick={handleAddAllToCart}
-                                        className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
-                                    >
-                                        Tambah Semua ke Keranjang
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={handleAddAllToCart}
+                                            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                                        >
+                                            <ShoppingCart className="w-4 h-4" />
+                                            Tambah Semua ke Keranjang
+                                        </button>
+                                        
+                                        <button
+                                            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-2 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                            Checkout Semua
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -474,9 +508,37 @@ export default function WishlistPage() {
                                                 {selectedItems.length} dipilih
                                             </span>
                                             <button
-                                                onClick={handleRemoveSelected}
-                                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                                                onClick={() => {
+                                                    // Add selected items to cart
+                                                    const selectedProducts = filteredAndSortedItems.filter(item => 
+                                                        selectedItems.includes(item.productId)
+                                                    );
+                                                    Promise.all(
+                                                        selectedProducts.map(item => handleAddToCart(item))
+                                                    ).then(() => {
+                                                        alert('Selected items added to cart!');
+                                                    }).catch(() => {
+                                                        alert('Some items could not be added to cart');
+                                                    });
+                                                }}
+                                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
                                             >
+                                                <ShoppingCart className="w-4 h-4" />
+                                                Tambah ke Keranjang
+                                            </button>
+                                            <button
+                                                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                                Checkout Dipilih
+                                            </button>
+                                            <button
+                                                onClick={handleRemoveSelected}
+                                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                                 Hapus Dipilih
                                             </button>
                                         </div>
@@ -518,9 +580,16 @@ export default function WishlistPage() {
 
                             {/* Items Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {filteredAndSortedItems.map(item => (
-                                    <WishlistItemCard key={item.productId} item={item} />
-                                ))}
+                                {filteredAndSortedItems.map(item => {
+                                    const isSelected = selectedItems.includes(item.productId);
+                                    return (
+                                        <WishlistItemCard 
+                                            key={item.productId} 
+                                            item={item} 
+                                            isSelected={isSelected}
+                                        />
+                                    );
+                                })}
                             </div>
                         </>
                     )}
