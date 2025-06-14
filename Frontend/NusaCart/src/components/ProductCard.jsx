@@ -21,7 +21,7 @@ const ProductCard = ({ product }) => {
     return (
         <div 
             onClick={() => navigate(`/product/${product.productId}`)}
-            className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer flex flex-col transform hover:-translate-y-1"
+            className="group relative bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer flex flex-col transform hover:-translate-y-2 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
         >
             {/* Badge diskon */}
             {discount > 5 && (
@@ -55,8 +55,8 @@ const ProductCard = ({ product }) => {
             
             {/* Informasi produk */}
             <div className="p-5 flex flex-col flex-grow">
-                <div className="mb-3">
-                    <h3 className="text-base font-bold text-gray-800 line-clamp-2 leading-tight mb-2 min-h-[3rem]">
+                <div className="mb-1">
+                    <h3 className="text-base font-bold text-gray-800 line-clamp-2 leading-tight min-h-[2.5rem]">
                         {product.productName}
                     </h3>
                     
@@ -81,7 +81,7 @@ const ProductCard = ({ product }) => {
                 </div>
                 
                 <div className="mt-auto">
-                    <div className="mb-4">
+                    <div className="mb-1">
                         <p className="text-xl font-bold text-[#E64646]">
                             Rp{product.price?.toLocaleString('id-ID')}
                         </p>
@@ -111,7 +111,7 @@ const ProductCard = ({ product }) => {
                         <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{product.terjual || 0} terjual</span>
                     </div>
                     
-                    <button
+                    {/* <button
                         className="w-full bg-gradient-to-r from-[#E64646] to-[#FF6B6B] text-white font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 text-sm group-hover:from-[#FF6B6B] group-hover:to-[#E64646] transform group-hover:-translate-y-0.5 shadow-md group-hover:shadow-lg flex items-center justify-center"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -123,7 +123,7 @@ const ProductCard = ({ product }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         Lihat Detail
-                    </button>
+                    </button> */}
                 </div>
             </div>
         </div>

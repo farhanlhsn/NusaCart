@@ -2,7 +2,10 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://localhost:6060',
-  withCredentials: true  // Pastikan cookies dikirim
+  withCredentials: true,  // Pastikan cookies dikirim
+  timeout: 60000, // 60 detik timeout untuk upload file
+  maxContentLength: 100 * 1024 * 1024, // 100MB max content length
+  maxBodyLength: 100 * 1024 * 1024 // 100MB max body length
 });
 
 // Request interceptor - HAPUS Authorization header logic
