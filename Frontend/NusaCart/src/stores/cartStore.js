@@ -222,7 +222,8 @@ const useCartStore = create(
             address: orderData.address,
             addressId: orderData.addressId,
             paymentMethodId: orderData.paymentMethodId,
-            items: orderItems
+            items: orderItems,
+            ...(orderData.promoCode && { promoCode: orderData.promoCode })
           };
           
           console.log('CartStore sending order payload:', orderPayload);

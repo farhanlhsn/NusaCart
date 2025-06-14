@@ -16,12 +16,14 @@ import FAQ from "./FAQ";
 import Terms from "./Terms";
 import Privacy from "./Privacy";
 import SellerDashboard from "./SellerDashboard";
-import SellerChatPage from "./SellerChatPage";
 import SearchPage from './SearchPage';
 import ProductsPage from './ProductsPage';
 import OrderHistoryPage from './OrderHistoryPage';
 import ProductDetail from '../components/ProductDetail';
 import PaymentPage from './PaymentPage';
+import PromoListPage from './PromoListPage';
+import CategoryPage from './CategoryPage';
+import CategoriesListPage from './CategoriesListPage';
 
 export const router = createBrowserRouter([
   {
@@ -98,10 +100,6 @@ export const router = createBrowserRouter([
         element: <SellerDashboard />,
       },
       {
-        path: "/seller/chat",
-        element: <SellerChatPage />,
-      },
-      {
         path: "/search",
         element: <SearchPage />,
       },
@@ -120,6 +118,18 @@ export const router = createBrowserRouter([
       {
         path: "/payment/:orderId?",
         element: <PaymentPage />,
+      },
+      {
+        path: "/promo",
+        element: <PromoListPage />,
+      },
+      {
+        path: "/categories",
+        element: <CategoriesListPage />,
+      },
+      {
+        path: "/categories/:categoryValue",
+        element: <CategoryPage />,
       },
     ],
   },
