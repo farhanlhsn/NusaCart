@@ -91,8 +91,9 @@ export default function UserRegisterPage() {
 			if (response.status === 201 || response.status === 200) {
 				console.log("Registration successful:", response.data);
 				setSuccess(true);
-				setSuccessMessage("Pendaftaran berhasil!");
-				setCurrentStep(2);
+				setSuccessMessage("Kode verifikasi telah dikirim ke WhatsApp Anda!");
+				// Redirect ke halaman verifikasi dengan email sebagai parameter
+				navigate(`/verify-registration?email=${encodeURIComponent(formData.email)}`);
 			}
 		} catch (error) {
 			console.error("Registration error details:", {

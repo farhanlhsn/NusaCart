@@ -198,6 +198,9 @@ if (typeof window !== 'undefined') {
 export const authAPI = {
   login: (data) => api.post('/api/auth/login', data),
   register: (data) => api.post('/api/auth/register', data),
+  verifyRegistration: (data) => api.post('/api/auth/verify-registration', data),
+  resendRegistrationOTP: (data) => api.post('/api/auth/resend-registration-otp', data),
+  updatePhoneRegistration: (data) => api.post('/api/auth/update-phone-registration', data),
   logout: () => api.post('/api/auth/logout'),
   refresh: () => api.post('/api/auth/refresh'),
   forgotPassword: (data) => api.post('/api/auth/forget_password', data),

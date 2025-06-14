@@ -42,10 +42,19 @@ export default function LoginPage() {
 			const result = await login(formData);
 			
 			console.log("Login successful:", result);
-			setSuccess("Login berhasil! Mengalihkan...");
-			setTimeout(() => {
-				navigate("/home");
-			}, 1500);
+			
+			// Check if user is verified
+			if (result.user && !result.user.isVerified) {
+				setSuccess("Login berhasil! Mengalihkan ke halaman verifikasi...");
+				setTimeout(() => {
+					navigate(`/verify-registration?email=${encodeURIComponent(result.user.email)}`);
+				}, 1500);
+			} else {
+				setSuccess("Login berhasil! Mengalihkan...");
+				setTimeout(() => {
+					navigate("/home");
+				}, 1500);
+			}
 
 		} catch (error) {
 			console.error("Login error:", error);

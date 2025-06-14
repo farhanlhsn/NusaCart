@@ -61,11 +61,16 @@ public class UserEntity {
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "is_verified")
+    @Builder.Default
+    private boolean isVerified = false;
+
     // --- JPA Callback Method ---
     @PrePersist
     protected void onCreate() {
         this.registeredDate = LocalDateTime.now();
         this.isLogin = false;
+        this.isVerified = false;
     }
 
     public void addRole(UserRole role) {

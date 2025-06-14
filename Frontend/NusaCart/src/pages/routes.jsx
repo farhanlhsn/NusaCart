@@ -3,6 +3,7 @@ import Layout from "./layout";
 import LoginPage from "./LoginPage";
 import ErrorPage from "./ErrorPage";
 import UserRegisterPage from "./UserRegisterPage";
+import VerifyRegistrationPage from "./VerifyRegistrationPage";
 import HomePage from "./HomePage";
 import ForgetPasswordPage from "./ForgetPasswordPage";
 import Profile from "./profile";
@@ -33,6 +34,10 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <UserRegisterPage />,
+  },
+  {
+    path: "/verify-registration",
+    element: <VerifyRegistrationPage />,
   },
   {
     path: "/forgot",
