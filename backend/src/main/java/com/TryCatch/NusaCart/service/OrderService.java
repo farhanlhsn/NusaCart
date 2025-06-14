@@ -69,7 +69,7 @@ public class OrderService {
         order.setItems(items);
 
         double total = items.stream().mapToDouble(OrderItemEntity::getPrice).sum();
-
+        // promo code logic
         if (dto.getPromoCode() != null && !dto.getPromoCode().isEmpty()) {
             DiscountEntity discount = discountRepository.findByPromoCode(dto.getPromoCode())
                     .filter(DiscountEntity::isValid)
