@@ -10,6 +10,7 @@ const useReviewStore = create((set, get) => ({
   error: null,
   submitting: false,
   pendingRequests: new Set(), // Track pending requests to avoid duplicates
+  lastUpdated: 0, // Timestamp to trigger re-renders
 
   // Actions
   setLoading: (loading) => set({ loading }),
@@ -54,7 +55,8 @@ const useReviewStore = create((set, get) => ({
           [productIdStr]: reviews
         },
         pendingRequests: new Set([...state.pendingRequests].filter(id => id !== productIdStr)),
-        loading: false
+        loading: false,
+        lastUpdated: Date.now()
       }));
       
       return reviews;
@@ -77,9 +79,23 @@ const useReviewStore = create((set, get) => ({
       const { productId, ...reviewPayload } = reviewData;
       await reviewAPI.create(productId, reviewPayload);
       
-      // Force refresh reviews for the product after creating
+      // Immediately clear cache and force refresh reviews for the product
       if (productId) {
-        await get().forceRefreshProductReviews(productId);
+        const state = get();
+        const productIdStr = productId.toString();
+        
+        // Clear existing cache for this product
+        set(state => {
+          const newProductReviews = { ...state.productReviews };
+          delete newProductReviews[productIdStr];
+          return {
+            productReviews: newProductReviews,
+            pendingRequests: new Set([...state.pendingRequests].filter(id => id !== productIdStr))
+          };
+        });
+        
+        // Force immediate re-fetch
+        await get().fetchReviewsByProduct(productId);
       }
       
       set({ submitting: false });
@@ -99,9 +115,23 @@ const useReviewStore = create((set, get) => ({
     try {
       await reviewAPI.update(reviewId, reviewData);
       
-      // Force refresh reviews for the product after updating
+      // Immediately clear cache and force refresh reviews for the product
       if (reviewData.productId) {
-        await get().forceRefreshProductReviews(reviewData.productId);
+        const state = get();
+        const productIdStr = reviewData.productId.toString();
+        
+        // Clear existing cache for this product
+        set(state => {
+          const newProductReviews = { ...state.productReviews };
+          delete newProductReviews[productIdStr];
+          return {
+            productReviews: newProductReviews,
+            pendingRequests: new Set([...state.pendingRequests].filter(id => id !== productIdStr))
+          };
+        });
+        
+        // Force immediate re-fetch
+        await get().fetchReviewsByProduct(reviewData.productId);
       }
       
       set({ submitting: false });
@@ -121,13 +151,14 @@ const useReviewStore = create((set, get) => ({
     const productIdStr = productId ? productId.toString() : '';
     
     // Clear existing cache for this product
-    set(state => ({
-      productReviews: {
-        ...state.productReviews,
-        [productIdStr]: undefined
-      },
-      pendingRequests: new Set([...state.pendingRequests].filter(id => id !== productIdStr))
-    }));
+    set(state => {
+      const newProductReviews = { ...state.productReviews };
+      delete newProductReviews[productIdStr];
+      return {
+        productReviews: newProductReviews,
+        pendingRequests: new Set([...state.pendingRequests].filter(id => id !== productIdStr))
+      };
+    });
     
     // Force re-fetch
     const result = await get().fetchReviewsByProduct(productId);
