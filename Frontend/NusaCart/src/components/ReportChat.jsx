@@ -1,10 +1,46 @@
 import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, CheckCircle } from 'lucide-react';
+import api from '../services/api';
 
-const ReportChat = ({ isOpen, onClose, onSubmit }) => {
+// Custom CSS for animations
+const animationStyles = `
+  @keyframes fadeIn {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      opacity: 0.5;
+      transform: translateY(30px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-slideInUp {
+    animation: slideInUp 0.5s ease-out;
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = animationStyles;
+  document.head.appendChild(styleSheet);
+}
+
+const ReportChat = ({ isOpen, onClose, reportedUserId }) => {
   const [selectedReason, setSelectedReason] = useState('');
   const [description, setDescription] = useState('');
-  const [attachments, setAttachments] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const reportReasons = [
     'Pesan mengganggu (Spam)',
@@ -14,35 +50,70 @@ const ReportChat = ({ isOpen, onClose, onSubmit }) => {
     'Lainnya'
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (selectedReason && description.trim()) {
-      onSubmit({
-        reason: selectedReason,
-        description: description.trim(),
-        attachments
-      });
-      // Reset form
-      setSelectedReason('');
-      setDescription('');
-      setAttachments([]);
-      onClose();
+    if (selectedReason && description.trim() && !isSubmitting && reportedUserId) {
+      setIsSubmitting(true);
+      try {
+        const response = await api.post('/api/chat/report', {
+          reportedUserId: reportedUserId,
+          reason: selectedReason,
+          description: description.trim()
+        });
+
+        if (response.status === 200) {
+          // Show success popup
+          setShowSuccessPopup(true);
+          
+          // Auto close after 2 seconds
+          setTimeout(() => {
+            setShowSuccessPopup(false);
+            // Reset form
+            setSelectedReason('');
+            setDescription('');
+            onClose();
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Error submitting report:', error);
+        if (error.response?.status === 401) {
+          alert('Sesi Anda telah berakhir. Silakan login kembali.');
+        } else {
+          alert('Gagal mengirim laporan. Silakan coba lagi.');
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    setAttachments(prev => [...prev, ...files]);
-  };
 
-  const removeAttachment = (index) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <>
+      {/* Success Popup */}
+      {showSuccessPopup && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
+           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform transition-all duration-500 ease-out animate-slideInUp">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Laporan Berhasil Dikirim!
+              </h3>
+              <p className="text-gray-600">
+                Terima kasih atas laporan Anda. Tim kami akan meninjau laporan ini.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Modal */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -100,70 +171,22 @@ const ReportChat = ({ isOpen, onClose, onSubmit }) => {
               </div>
             </div>
 
-            {/* Attachments */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Lampiran
-              </label>
-              
-              {/* File Upload Area */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="cursor-pointer flex flex-col items-center"
-                >
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mb-2">
-                    <Plus className="w-6 h-6 text-gray-500" />
-                  </div>
-                  <span className="text-sm text-gray-600">Tambah lampiran</span>
-                </label>
-              </div>
 
-              {/* Attachment Counter */}
-              <div className="text-sm text-gray-500 mt-2">
-                {attachments.length}/6
-              </div>
-
-              {/* Attachment List */}
-              {attachments.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                                             <button
-                         type="button"
-                         onClick={() => removeAttachment(index)}
-                         className="text-red-500 hover:text-red-700 ml-2"
-                       >
-                         <X className="w-4 h-4" />
-                       </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!selectedReason || !description.trim()}
+              disabled={!selectedReason || !description.trim() || isSubmitting || !reportedUserId}
               className="w-full bg-red-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              Laporkan
+              {isSubmitting ? 'Mengirim...' : 'Laporkan'}
             </button>
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
-export default ReportChat; 
+export default ReportChat;
