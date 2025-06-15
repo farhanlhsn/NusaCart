@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  frontend:
+    build:
+      context: ./Frontend/NusaCart
+    ports:
+      - "5173:80"
+    working_dir: /app
+    volumes:
+      - ./Frontend/NusaCart:/app
+    command: ["npm", "run", "build"]
+    environment:
+      - NODE_ENV=production
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: ["./mvnw", "clean", "install"]
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
