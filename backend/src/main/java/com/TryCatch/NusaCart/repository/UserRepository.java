@@ -16,4 +16,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Integer> {
     // Cek apakah email sudah terdaftar (untuk validasi registrasi)
     boolean existsByEmail(String email);
 
+    // Mencari user berdasarkan nomor telepon
+    Optional<UserEntity> findByPhoneNumber(String phoneNumber);
+    
+    // Cek apakah nomor telepon sudah terdaftar (untuk validasi registrasi)
+    boolean existsByPhoneNumber(String phoneNumber);
+
 }

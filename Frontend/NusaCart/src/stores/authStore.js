@@ -15,12 +15,28 @@ const useAuthStore = create(
         set({ loading: true, error: null });
         try {
           const response = await authAPI.login(credentials);
-          set({
-            user: response.data.user,
-            isLoggedIn: true,
-            loading: false,
-            error: null
-          });
+          
+          // Check if user is verified before saving to store
+          const isUserVerified = response.data.verified !== undefined ? response.data.verified : response.data.user?.verified;
+          
+          if (isUserVerified) {
+            // Only save user data and set logged in if user is verified
+            set({
+              user: response.data.user,
+              isLoggedIn: true,
+              loading: false,
+              error: null
+            });
+          } else {
+            // For unverified users, don't save to store, just clear loading state
+            set({
+              loading: false,
+              error: null,
+              isLoggedIn: false,
+              user: null
+            });
+          }
+          
           return response.data;
         } catch (error) {
           const errorMessage = error.response?.data?.message || 'Login gagal';
@@ -156,6 +172,19 @@ const useAuthStore = create(
       },
 
       clearError: () => set({ error: null }),
+
+      // Update user data in store (for profile updates)
+      updateUser: (userData) => {
+        const currentState = get();
+        if (currentState.isLoggedIn) {
+          set({
+            user: {
+              ...currentState.user,
+              ...userData
+            }
+          });
+        }
+      },
     }),
     {
       name: 'userLoginStatus',

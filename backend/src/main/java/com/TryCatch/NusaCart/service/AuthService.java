@@ -82,6 +82,23 @@ public class AuthService {
         
         UserEntity user = userOpt.get();
 
+        // Check if user is verified
+        if (!user.isVerified()) {
+            // For unverified users, return user data without setting login status or generating tokens
+            log.info("User {} attempted login but is not verified", user.getEmail());
+            
+            // Create response with user data but no tokens - this allows frontend to redirect to verification
+            AuthResponseDTO response = new AuthResponseDTO(
+                null, // no access token
+                null, // no refresh token  
+                null, // no expiration
+                new UserBasicDTO(user), 
+                "Login berhasil, namun akun belum diverifikasi"
+            );
+            
+            return response;
+        }
+
         // Always delete any existing refresh token for this user (regardless of login status)
         refreshTokenRepository.deleteByUser(user);
         refreshTokenRepository.flush(); 
@@ -142,10 +159,69 @@ public class AuthService {
         return responseMap;
     }
 
+    /**
+     * Normalisasi nomor telepon Indonesia ke format internasional
+     * Menggunakan logic yang sama dengan UserService
+     */
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("Nomor telepon tidak boleh kosong");
+        }
+        
+        // Remove all non-digit characters except +
+        String cleaned = phoneNumber.replaceAll("[^+\\d]", "");
+        
+        // Remove leading + if exists
+        if (cleaned.startsWith("+")) {
+            cleaned = cleaned.substring(1);
+        }
+        
+        // Handle different Indonesian phone number formats
+        if (cleaned.startsWith("08")) {
+            // 08xxxxxxxxx -> 628xxxxxxxxx
+            cleaned = "62" + cleaned.substring(1);
+        } else if (cleaned.startsWith("8") && cleaned.length() >= 9) {
+            // 8xxxxxxxxx -> 628xxxxxxxxx (missing leading 0)
+            cleaned = "62" + cleaned;
+        } else if (cleaned.startsWith("62")) {
+            // Already in international format, keep as is
+            // 62xxxxxxxxxx -> 62xxxxxxxxxx
+        } else {
+            throw new IllegalArgumentException("Format nomor telepon tidak valid. Gunakan format: 08xxxxxxxxx atau 62xxxxxxxxx");
+        }
+        
+        // Validate length (Indonesian mobile numbers should be 12-13 digits with country code)
+        if (cleaned.length() < 11 || cleaned.length() > 14) {
+            throw new IllegalArgumentException("Panjang nomor telepon tidak valid. Nomor telepon Indonesia harus 10-13 digit (tanpa kode negara)");
+        }
+        
+        // Validate Indonesian mobile prefixes
+        if (!cleaned.matches("^62(8[1-9]|9[0-9])\\d{7,10}$")) {
+            throw new IllegalArgumentException("Nomor telepon bukan nomor mobile Indonesia yang valid");
+        }
+        
+        log.debug("Phone number normalized from {} to {}", phoneNumber, cleaned);
+        return cleaned;
+    }
+
     @Transactional
     public Map<String, String> register(UserRegisterDTO request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email " + request.getEmail() + " sudah terdaftar");
+        }
+
+        // Normalize phone number before creating user
+        String normalizedPhoneNumber;
+        try {
+            normalizedPhoneNumber = normalizePhoneNumber(request.getPhoneNumber());
+        } catch (IllegalArgumentException e) {
+            log.error("Phone number normalization failed during registration: {}", e.getMessage());
+            throw new IllegalArgumentException("Format nomor telepon tidak valid: " + e.getMessage());
+        }
+        
+        // Check if phone number already exists
+        if (userRepository.existsByPhoneNumber(normalizedPhoneNumber)) {
+            throw new IllegalArgumentException("Nomor telepon " + request.getPhoneNumber() + " sudah terdaftar");
         }
 
         UserEntity user = new UserEntity();
@@ -155,7 +231,7 @@ public class AuthService {
         user.addRole(UserRole.USER);
         user.setRegisteredDate(LocalDateTime.now());
         user.setProfilePicture("");
-        user.setPhoneNumber(request.getPhoneNumber());
+        user.setPhoneNumber(normalizedPhoneNumber); // Use normalized phone number
         user.setVerified(false);
         
         // Tidak langsung save ke database, tapi kirim OTP dulu
@@ -172,6 +248,14 @@ public class AuthService {
     
     public Map<String, String> updatePhoneRegistration(String email, String phoneNumber) {
         return userService.updatePhoneRegistration(email, phoneNumber);
+    }
+    
+    public Map<String, String> updateEmailRegistration(String oldEmail, String newEmail, String phoneNumber) {
+        return userService.updateEmailRegistration(oldEmail, newEmail, phoneNumber);
+    }
+    
+    public Map<String, String> getRegistrationInfo(String email) {
+        return userService.getRegistrationInfo(email);
     }
 
     @Transactional

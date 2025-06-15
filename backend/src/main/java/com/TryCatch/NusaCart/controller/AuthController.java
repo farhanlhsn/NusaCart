@@ -51,17 +51,22 @@ public class AuthController {
         
         AuthResponseDTO authResponse = authService.login(loginDto);
         
-        // Set secure cookies untuk tokens
-        setTokenCookies(response, authResponse.getAccess_token(), authResponse.getRefresh_token());
-        
-        // Buat response baru tanpa token di body
-        AuthResponseDTO cookieResponse = new AuthResponseDTO(
-            authResponse.getUser(), 
-            authResponse.getMessage(), 
-            authResponse.getExpires_in()
-        );
-        
-        return new ResponseEntity<>(cookieResponse, HttpStatus.OK);
+        // Only set secure cookies if tokens are present (verified users)
+        if (authResponse.getAccess_token() != null && authResponse.getRefresh_token() != null) {
+            setTokenCookies(response, authResponse.getAccess_token(), authResponse.getRefresh_token());
+            
+            // Buat response baru tanpa token di body untuk verified users
+            AuthResponseDTO cookieResponse = new AuthResponseDTO(
+                authResponse.getUser(), 
+                authResponse.getMessage(), 
+                authResponse.getExpires_in()
+            );
+            
+            return new ResponseEntity<>(cookieResponse, HttpStatus.OK);
+        } else {
+            // For unverified users, return the response as-is (no tokens, no cookies)
+            return new ResponseEntity<>(authResponse, HttpStatus.OK);
+        }
     }
     
     @PostMapping(
@@ -127,6 +132,43 @@ public class AuthController {
         }
         
         Map<String, String> response = authService.updatePhoneRegistration(email, phoneNumber);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @PostMapping(
+        path = "/update-email-registration",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> updateEmailRegistration(@RequestBody Map<String, String> request) {
+        log.info("Update email for registration from: {} to: {}", request.get("oldEmail"), request.get("newEmail"));
+        
+        String oldEmail = request.get("oldEmail");
+        String newEmail = request.get("newEmail");
+        String phoneNumber = request.get("phoneNumber");
+        
+        if (oldEmail == null || newEmail == null || phoneNumber == null) {
+            throw new RuntimeException("Old email, new email, and phone number are required");
+        }
+        
+        Map<String, String> response = authService.updateEmailRegistration(oldEmail, newEmail, phoneNumber);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @PostMapping(
+        path = "/get-registration-info",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<Map<String, String>> getRegistrationInfo(@RequestBody Map<String, String> request) {
+        log.info("Get registration info for email: {}", request.get("email"));
+        
+        String email = request.get("email");
+        if (email == null) {
+            throw new RuntimeException("Email is required");
+        }
+        
+        Map<String, String> response = authService.getRegistrationInfo(email);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     

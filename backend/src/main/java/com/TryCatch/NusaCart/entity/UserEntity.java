@@ -58,7 +58,7 @@ public class UserEntity {
 
     private String profilePicture;
 
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     @Column(name = "is_verified")
@@ -68,9 +68,9 @@ public class UserEntity {
     // --- JPA Callback Method ---
     @PrePersist
     protected void onCreate() {
-        this.registeredDate = LocalDateTime.now();
-        this.isLogin = false;
-        this.isVerified = false;
+        if (this.registeredDate == null) {
+            this.registeredDate = LocalDateTime.now();
+        }
     }
 
     public void addRole(UserRole role) {
