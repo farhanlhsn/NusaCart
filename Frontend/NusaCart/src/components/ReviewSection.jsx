@@ -11,6 +11,9 @@ const ReviewSection = ({ productId }) => {
   const [editingReview, setEditingReview] = useState(null);
   const [toast, setToast] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingDistribution, setRatingDistribution] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
 
   const { 
     fetchReviewsByProduct,
@@ -23,7 +26,8 @@ const ReviewSection = ({ productId }) => {
     loading,
     submitting,
     error,
-    clearError
+    clearError,
+    lastUpdated
   } = useReviewStore();
   
   const { user } = useAuthStore();
@@ -51,24 +55,30 @@ const ReviewSection = ({ productId }) => {
     }
   }, [user, orders, productId]);
 
-  // Separate effect to watch for review changes - remove problematic dependency
+  // Effect to update local state when store changes
   useEffect(() => {
-    if (user && productId) {
-      const reviews = getReviewsByProduct(productId);
-      const userReview = reviews.find(review => review.userId === user.userId);
-      setHasReviewed(!!userReview);
+    if (productId) {
+      const storeReviews = getReviewsByProduct(productId);
+      const storeAverageRating = getAverageRating(productId);
+      const storeRatingDistribution = getRatingDistribution(productId);
       
-      if (userReview) {
-        setEditingReview(userReview);
-      } else {
-        setEditingReview(null);
+      setReviews(storeReviews);
+      setAverageRating(storeAverageRating);
+      setRatingDistribution(storeRatingDistribution);
+      
+      // Check if user has reviewed
+      if (user) {
+        const userReview = storeReviews.find(review => review.userId === user.userId);
+        setHasReviewed(!!userReview);
+        
+        if (userReview) {
+          setEditingReview(userReview);
+        } else {
+          setEditingReview(null);
+        }
       }
     }
-  }, [user, productId, getReviewsByProduct]); // Remove reviews dependency to avoid circular reference
-
-  const reviews = getReviewsByProduct(productId);
-  const averageRating = getAverageRating(productId);
-  const ratingDistribution = getRatingDistribution(productId);
+  }, [productId, user, getReviewsByProduct, getAverageRating, getRatingDistribution, lastUpdated]);
 
   // Toast notification component
   const Toast = ({ message, type = 'success' }) => {
@@ -236,37 +246,42 @@ const ReviewSection = ({ productId }) => {
                      setEditingReview(null);
                      setRefreshing(true);
                      
-                     // Show processing state
-                     showToast('Processing your review...', 'success');
+                     // Show success message
+                     showToast(
+                       result.action === 'updated' 
+                         ? 'Review updated successfully!' 
+                         : 'Review submitted successfully!',
+                       'success'
+                     );
                      
+                     // Force refresh to ensure UI updates immediately
                      try {
-                       // Add delay to ensure backend processing
-                       await new Promise(resolve => setTimeout(resolve, 500));
+                       // Small delay to ensure backend has processed the update
+                       await new Promise(resolve => setTimeout(resolve, 300));
                        
-                       // Force refresh reviews data to get latest from backend
-                       await forceRefreshProductReviews(productId);
+                       // Update local state from store
+                       const storeReviews = getReviewsByProduct(productId);
+                       const storeAverageRating = getAverageRating(productId);
+                       const storeRatingDistribution = getRatingDistribution(productId);
                        
-                       // Update local state
-                       setHasReviewed(true);
+                       setReviews(storeReviews);
+                       setAverageRating(storeAverageRating);
+                       setRatingDistribution(storeRatingDistribution);
                        
-                       // Show final success message
-                       showToast(
-                         result.action === 'updated' 
-                           ? 'Review updated successfully!' 
-                           : 'Review submitted successfully!'
-                       );
+                       // Update user review status
+                       if (user) {
+                         const userReview = storeReviews.find(review => review.userId === user.userId);
+                         setHasReviewed(!!userReview);
+                         if (userReview) {
+                           setEditingReview(userReview);
+                         }
+                       }
                        
-                       // Double refresh to ensure all components get updated
-                       setTimeout(async () => {
-                         await forceRefreshProductReviews(productId);
-                         setRefreshing(false);
-                       }, 1000);
-                       
+                       setRefreshing(false);
                      } catch (error) {
                        console.error('Error refreshing reviews:', error);
-                       showToast('Review saved but failed to refresh. Please refresh the page.', 'error');
                        setRefreshing(false);
-                     }
+                     }git 
                    }}
                    onCancel={() => {
                      setShowReviewForm(false);
