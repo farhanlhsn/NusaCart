@@ -32,8 +32,8 @@ public class ProductDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isWishlisted;
+    private Long terjual; 
     
-    // Constructor from ProductEntity
     public ProductDTO(ProductEntity product) {
         this.productId = product.getProductId();
         this.productName = product.getProductName();
@@ -49,5 +49,6 @@ public class ProductDTO {
         this.isActive = product.getIsActive();
         this.createdAt = product.getCreatedAt();
         this.updatedAt = product.getUpdatedAt();
+        this.terjual = 0L; 
     }
 }

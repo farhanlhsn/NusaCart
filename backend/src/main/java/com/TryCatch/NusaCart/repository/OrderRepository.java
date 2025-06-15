@@ -52,4 +52,8 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     
     @Query("SELECT COUNT(o) FROM OrderEntity o JOIN o.items oi JOIN oi.product p WHERE p.toko = :toko AND o.orderStatus = :status")
     Long countOrdersByTokoAndStatus(@Param("toko") TokoEntity toko, @Param("status") String status);
+    
+    // Query untuk menghitung jumlah produk yang terjual berdasarkan productId
+    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderEntity o JOIN o.items oi WHERE oi.product.productId = :productId AND o.paymentStatus = 'PAID'")
+    Long countSoldQuantityByProductId(@Param("productId") Integer productId);
 }

@@ -15,4 +15,5 @@ public class OrderResponseDTO {
     private PaymentMethodDTO paymentMethod;
     private String paymentStatus;
     private String orderStatus;
+    private DiscountDTO discount; 
 }

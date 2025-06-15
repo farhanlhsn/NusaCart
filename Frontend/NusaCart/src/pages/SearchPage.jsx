@@ -197,7 +197,12 @@ export default function SearchPage() {
             <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-black p-2 rounded-full border border-gray-200 bg-white shadow-sm">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Hasil Pencarian untuk: <span className="text-indigo-600">{searchName}</span></h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Hasil Pencarian untuk: <span className="text-indigo-600">{searchName}</span></h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Ditemukan {displayResults.length} produk{stores.length > 0 && ` dan ${stores.length} toko`}
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -310,23 +315,90 @@ export default function SearchPage() {
                 {/* Hasil Toko */}
                 {stores.length > 0 && (
                   <div className="mb-10">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Toko Terkait</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Toko Terkait ({stores.length})
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {stores.map(store => (
                         <button 
-                          key={store.id} 
-                          onClick={() => navigate(`/toko/${store.id}`)}
-                          className="bg-white rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition-all cursor-pointer"
+                          key={store.idToko || store.id} 
+                          onClick={() => navigate(`/toko/${store.idToko || store.id}`)}
+                          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 flex flex-col items-center group border border-gray-100 hover:border-blue-200"
                         >
-                          <img src={store.image} alt={store.name} className="w-16 h-16 rounded-full object-cover mb-2" />
-                          <div className="font-bold text-gray-800 text-center hover:text-red-600 transition-colors">{store.name}</div>
+                          {/* Store Image */}
+                          <div className="w-16 h-16 mb-4 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                            {store.profilePictureToko ? (
+                              <img 
+                                src={store.profilePictureToko.startsWith('http') 
+                                  ? store.profilePictureToko 
+                                  : `http://localhost:6060${store.profilePictureToko}`} 
+                                alt={store.namaToko || store.name} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className="w-full h-full flex items-center justify-center text-gray-400"
+                              style={{ display: store.profilePictureToko ? 'none' : 'flex' }}
+                            >
+                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          {/* Store Info */}
+                          <div className="text-center">
+                            <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors text-sm mb-2 line-clamp-2">
+                              {store.namaToko || store.name}
+                            </h3>
+                            
+                            {/* Store Location */}
+                            {store.alamatToko && (
+                              <p className="text-xs text-gray-500 mb-2 line-clamp-1">
+                                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {store.alamatToko.length > 30 ? `${store.alamatToko.substring(0, 30)}...` : store.alamatToko}
+                              </p>
+                            )}
+                            
+                            {/* Store Stats */}
+                            <div className="flex items-center justify-center space-x-3 text-xs text-gray-500">
+                              {store.createdAt && (
+                                <span className="flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  {new Date(store.createdAt).getFullYear()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Hover Effect */}
+                          <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-xs text-blue-600 font-medium">Kunjungi Toko →</span>
+                          </div>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
                 {/* Hasil Produk */}
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Produk</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Produk ({displayResults.length})
+                </h2>
                 {displayResults.length === 0 ? (
                   <div className="text-center py-16">
                     <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>

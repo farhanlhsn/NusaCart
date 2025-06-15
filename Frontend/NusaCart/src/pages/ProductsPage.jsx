@@ -18,7 +18,7 @@ export default function ProductsPage() {
   // Extract pagination data with defaults
   const currentPage = (pagination.currentPage || 0) + 1; // Convert from 0-based to 1-based
   const totalPages = pagination.totalPages || 0;
-  const pageSize = pagination.size || 12; // Changed from 20 to 12 products per page
+  const pageSize = pagination.size || 12; 
   const totalItems = pagination.totalElements || 0;
 
   // General categories from backend enum
@@ -62,9 +62,9 @@ export default function ProductsPage() {
     );
     
     if (Object.keys(cleanFilters).length === 0) {
-      fetchProducts(page, 12);
+      fetchProducts(page, pageSize);
     } else {
-      fetchProductsWithFilters(page, 12, cleanFilters);
+      fetchProductsWithFilters(page, pageSize, cleanFilters);
     }
   };
 
@@ -85,7 +85,7 @@ export default function ProductsPage() {
       sortBy: '',
       sortDirection: ''
     });
-    fetchProducts(0, 12); // Fetch without filters, 12 products per page
+    fetchProducts(0, pageSize); // Fetch without filters, using pageSize
   };
 
   const handlePageChange = (page) => {
@@ -305,9 +305,9 @@ export default function ProductsPage() {
                         <div className="text-gray-500 text-sm">
                           {products.length > 0 ? (
                             (() => {
-                              const startItem = (currentPage - 1) * 12 + 1;
-                              const endItem = (currentPage - 1) * 12 + products.length;
-                              const total = globalTotal > 0 ? globalTotal : (totalItems > 0 ? totalItems : ((currentPage - 1) * 12 + products.length));
+                              const startItem = (currentPage - 1) * pageSize + 1;
+                              const endItem = (currentPage - 1) * pageSize + products.length;
+                              const total = globalTotal > 0 ? globalTotal : (totalItems > 0 ? totalItems : ((currentPage - 1) * pageSize + products.length));
                               
                               return <>Menampilkan {startItem} - {endItem} dari {total} produk</>;
                             })()

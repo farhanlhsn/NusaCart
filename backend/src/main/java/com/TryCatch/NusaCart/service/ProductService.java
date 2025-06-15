@@ -24,6 +24,7 @@ import com.TryCatch.NusaCart.enums.GeneralCategory;
 import com.TryCatch.NusaCart.repository.CategoryRepository;
 import com.TryCatch.NusaCart.repository.ProductRepository;
 import com.TryCatch.NusaCart.repository.TokoRepository;
+import com.TryCatch.NusaCart.repository.OrderRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -51,6 +52,9 @@ public class ProductService {
     @Autowired
     private WishlistService wishlistService;
     
+    @Autowired
+    private OrderRepository orderRepository;
+    
     public ProductService(ProductRepository productRepository, TokoRepository tokoRepository, 
                          CategoryRepository categoryRepository, UserService userService) {
         this.productRepository = productRepository;
@@ -59,12 +63,20 @@ public class ProductService {
         this.userService = userService;
     }
     
+    // Helper method untuk membuat ProductDTO dengan data terjual
+    private ProductDTO createProductDTOWithSoldQuantity(ProductEntity product) {
+        ProductDTO productDTO = new ProductDTO(product);
+        Long soldQuantity = orderRepository.countSoldQuantityByProductId(product.getProductId());
+        productDTO.setTerjual(soldQuantity != null ? soldQuantity : 0L);
+        return productDTO;
+    }
+    
     // Get all products
     public List<ProductDTO> getAllProducts() {
         log.info("Getting all products");
         return productRepository.findAll()
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -82,7 +94,7 @@ public class ProductService {
         List<ProductDTO> paginatedProducts = allProducts.stream()
                 .skip(page * size)
                 .limit(size)
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
         
         // Calculate total pages
@@ -113,9 +125,9 @@ public class ProductService {
         Page<ProductEntity> productPage = productRepository.findProductsWithFilters(
                 categoryId, tokoId, minPrice, maxPrice, minStock, productName, generalCategory, activeOnly, pageable);
         
-        // Convert to DTOs
+        // Convert to DTOs dengan data terjual
         List<ProductDTO> productDTOs = productPage.getContent().stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
         
         // Create response
@@ -182,7 +194,7 @@ public class ProductService {
         ProductEntity product = productRepository.findByProductId(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Produk tidak ditemukan dengan ID: " + productId));
         
-        ProductDTO productDTO = new ProductDTO(product);
+        ProductDTO productDTO = createProductDTOWithSoldQuantity(product);
         
         // Check if product is in user's wishlist
         try {
@@ -211,7 +223,7 @@ public class ProductService {
         
         return productRepository.findByToko(toko)
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -233,7 +245,7 @@ public class ProductService {
         List<ProductDTO> paginatedProducts = allProducts.stream()
                 .skip(page * size)
                 .limit(size)
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
         
         // Calculate total pages
@@ -260,7 +272,7 @@ public class ProductService {
         
         return productRepository.findByCategory(category)
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -269,7 +281,7 @@ public class ProductService {
         log.info("Searching products with name containing: {}", productName);
         return productRepository.findByProductNameContainingIgnoreCase(productName)
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -278,7 +290,7 @@ public class ProductService {
         log.info("Getting all active products");
         return productRepository.findByIsActiveTrue()
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -287,7 +299,7 @@ public class ProductService {
         log.info("Getting products for seller with user ID: {}", sellerId);
         return productRepository.findBySellerUserId(sellerId)
                 .stream()
-                .map(ProductDTO::new)
+                .map(this::createProductDTOWithSoldQuantity)
                 .collect(Collectors.toList());
     }
     
@@ -336,7 +348,7 @@ public class ProductService {
         ProductEntity savedProduct = productRepository.save(product);
         log.info("Product created successfully with ID: {}", savedProduct.getProductId());
         
-        return new ProductDTO(savedProduct);
+        return createProductDTOWithSoldQuantity(savedProduct);
     }
     
     // Update product
@@ -420,7 +432,7 @@ public class ProductService {
         ProductEntity updatedProduct = productRepository.save(existingProduct);
         log.info("Product updated successfully with ID: {}", updatedProduct.getProductId());
         
-        return new ProductDTO(updatedProduct);
+        return createProductDTOWithSoldQuantity(updatedProduct);
     }
     
     // Delete product

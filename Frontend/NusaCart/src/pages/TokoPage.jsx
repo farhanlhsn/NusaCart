@@ -27,7 +27,7 @@ import ProductRating from '../components/ProductRating';
 import { toast } from 'react-hot-toast';
 
 const TokoPage = () => {
-  const { id } = useParams();
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const { user } = useAuthStore();
   
@@ -473,13 +473,25 @@ const TokoPage = () => {
               {sortedProducts.map(product => (
                 viewMode === 'grid' ? (
                   <ProductCard 
-                    key={product.productId} 
+                    key={product.productId}
                     product={product}
-                    onAddToCart={() => handleAddToCart(product)}
-                    onToggleWishlist={() => handleToggleWishlist(product)}
+                    onAddToCart={() => product.isActive ? handleAddToCart(product) : null}
+                    onToggleWishlist={() => product.isActive ? handleToggleWishlist(product) : null}
+                    disabled={!product.isActive}
                   />
                 ) : (
-                  <div key={product.productId} className="bg-white rounded-lg shadow-sm p-6 flex items-center space-x-6">
+                  <div key={product.productId} className={`relative bg-white rounded-lg shadow-sm p-6 flex items-center space-x-6 ${
+                    !product.isActive ? 'opacity-75' : ''
+                  }`}>
+                    {/* Badge untuk produk tidak aktif */}
+                    {!product.isActive && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <div className="bg-gray-800 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                          Tidak Tersedia
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Product Image */}
                     <div className="flex-shrink-0">
                       <img
@@ -503,20 +515,28 @@ const TokoPage = () => {
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
                       <Link 
-                        to={`/product/${product.productId}`}
-                        className="text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors"
+                        to={product.isActive ? `/product/${product.productId}` : '#'}
+                        className={`text-lg font-semibold transition-colors ${
+                          product.isActive 
+                            ? 'text-gray-900 hover:text-green-600' 
+                            : 'text-gray-600 cursor-not-allowed'
+                        }`}
+                        onClick={(e) => !product.isActive && e.preventDefault()}
                       >
                         {product.productName}
                       </Link>
-                      <p className="text-gray-600 text-sm mt-1 line-clamp-2">
+                      <p className={`text-sm mt-1 line-clamp-2 ${product.isActive ? 'text-gray-600' : 'text-gray-500'}`}>
                         {product.description}
                       </p>
                       <div className="flex items-center mt-2 space-x-4">
-                        <span className="text-xl font-bold text-green-600">
+                        <span className={`text-xl font-bold ${product.isActive ? 'text-green-600' : 'text-gray-500'}`}>
                           Rp {product.price?.toLocaleString('id-ID')}
                         </span>
                         <ProductRating productId={product.productId} />
-                        <span className="text-sm text-gray-500">
+                        <span className={`text-sm ${product.isActive ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {product.terjual || 0} terjual
+                        </span>
+                        <span className={`text-sm ${product.isActive ? 'text-gray-500' : 'text-gray-400'}`}>
                           Stok: {product.stock}
                         </span>
                       </div>
@@ -525,22 +545,31 @@ const TokoPage = () => {
                     {/* Actions */}
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleToggleWishlist(product)}
+                        onClick={() => product.isActive ? handleToggleWishlist(product) : null}
+                        disabled={!product.isActive}
                         className={`p-2 rounded-lg transition-colors ${
-                          product.isWishlisted 
-                            ? 'text-red-600 bg-red-50 hover:bg-red-100' 
-                            : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                          !product.isActive 
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : product.isWishlisted 
+                              ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                              : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
                         }`}
                       >
                         <Heart className={`h-5 w-5 ${product.isWishlisted ? 'fill-current' : ''}`} />
                       </button>
                       <button
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        onClick={() => product.isActive ? handleAddToCart(product) : null}
+                        disabled={!product.isActive || product.stock === 0}
+                        className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                          !product.isActive 
+                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            : product.stock === 0
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
-                        {product.stock === 0 ? 'Habis' : 'Keranjang'}
+                        {!product.isActive ? 'Tidak Tersedia' : product.stock === 0 ? 'Habis' : 'Keranjang'}
                       </button>
                     </div>
                   </div>

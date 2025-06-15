@@ -294,10 +294,139 @@ const SellerDashboard = () => {
     }
   };
 
+  // Preview Image Component
+  const PreviewImage = React.memo(({ file, index, onRemove }) => {
+    const [imageUrl, setImageUrl] = React.useState(null);
+    const [error, setError] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+      if (file && file instanceof File) {
+        setLoading(true);
+        setError(false);
+        
+        console.log(`Processing file ${index}:`, {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified
+        });
+        
+        // Use FileReader for better compatibility
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          const result = e.target.result;
+          console.log(`FileReader success for file ${index}:`, {
+            hasResult: !!result,
+            resultType: typeof result,
+            resultLength: result ? result.length : 0,
+            startsWithData: result ? result.startsWith('data:') : false,
+            preview: result ? result.substring(0, 50) + '...' : 'No result'
+          });
+          setImageUrl(result);
+          setLoading(false);
+          setError(false);
+        };
+        
+        reader.onerror = (e) => {
+          console.error(`FileReader error for file ${index}:`, e);
+          setError(true);
+          setLoading(false);
+        };
+        
+        reader.onabort = () => {
+          console.warn(`FileReader aborted for file ${index}`);
+          setError(true);
+          setLoading(false);
+        };
+        
+        try {
+          reader.readAsDataURL(file);
+        } catch (err) {
+          console.error(`Failed to start FileReader for file ${index}:`, err);
+          setError(true);
+          setLoading(false);
+        }
+      }
+    }, [file, index]);
+
+    if (loading || error || !imageUrl) {
+      return (
+        <div className="relative group">
+          <div className="w-full h-32 bg-gray-200 rounded-lg border-2 border-gray-300 flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <Package className="w-8 h-8 mx-auto mb-1" />
+              <span className="text-xs">
+                {loading ? 'Loading...' : error ? 'Error loading' : 'No image'}
+              </span>
+            </div>
+          </div>
+          {!loading && (
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative group">
+        <div className="w-full h-32 bg-white rounded-lg border-2 border-gray-200 group-hover:border-red-300 transition-colors overflow-hidden relative">
+          <img 
+            src={imageUrl}
+            alt={`Preview ${index + 1}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            onLoad={(e) => {
+              console.log(`Preview image ${index + 1} loaded successfully:`, {
+                src: e.target.src.substring(0, 50) + '...',
+                naturalWidth: e.target.naturalWidth,
+                naturalHeight: e.target.naturalHeight,
+                displayWidth: e.target.width,
+                displayHeight: e.target.height
+              });
+              setError(false);
+            }}
+            onError={(e) => {
+              console.error(`Failed to load preview image ${index + 1}:`, {
+                src: e.target.src.substring(0, 50) + '...',
+                error: e.type
+              });
+              setError(true);
+            }}
+            style={{ 
+              display: 'block',
+              visibility: 'visible',
+              opacity: 1,
+              zIndex: 1
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+          <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded">
+            Gambar Baru
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+        >
+          ×
+        </button>
+      </div>
+    );
+  });
+
   const ProductModal = React.memo(({ show, onClose, onSave, product, tokoId, onCategoryAdded, newCategoryId }) => {
     const [form, setForm] = React.useState(product || {
       productName: '', description: '', price: 0, stock: 0, idCategory: '',
-      imageUrl: '', isActive: true, generalCategory: 'LAINNYA'
+      isActive: true, generalCategory: 'LAINNYA'
     });
     const [saving, setSaving] = React.useState(false);
     const [err, setErr] = React.useState('');
@@ -323,8 +452,11 @@ const SellerDashboard = () => {
         }
       } else {
         localStorage.removeItem('productFormBackup');
+        // Reset states when modal closes
+        setSelectedImages([]);
+        setErr('');
       }
-    }, [show, product]);
+    }, [show, product, categories]);
 
     React.useEffect(() => {
         if (product && show) {
@@ -335,7 +467,7 @@ const SellerDashboard = () => {
         } else if (!product && show) {
             setForm({
               productName: '', description: '', price: 0, stock: 0, idCategory: '',
-              imageUrl: '', isActive: true, generalCategory: 'LAINNYA'
+              isActive: true, generalCategory: 'LAINNYA'
             });
             setSelectedImages([]);
         }
@@ -358,7 +490,50 @@ const SellerDashboard = () => {
       setForm(prevForm => ({ ...prevForm, [name]: type === 'checkbox' ? checked : value }));
     };
     
-    const handleFileChange = (e) => setSelectedImages(Array.from(e.target.files));
+    const handleFileChange = (e) => {
+      const files = Array.from(e.target.files);
+      console.log('Files selected:', files.length);
+      
+      // Filter only valid image files
+      const validFiles = files.filter(file => {
+        const isValidType = file.type.startsWith('image/');
+        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB max
+        
+        console.log(`File ${file.name}:`, {
+          type: file.type,
+          size: file.size,
+          isValidType,
+          isValidSize
+        });
+        
+        if (!isValidType) {
+          console.warn(`File ${file.name} is not a valid image type`);
+        }
+        if (!isValidSize) {
+          console.warn(`File ${file.name} is too large (max 10MB)`);
+        }
+        
+        return isValidType && isValidSize;
+      });
+      
+      // Limit to 5 images max
+      const limitedFiles = validFiles.slice(0, 5);
+      
+      if (limitedFiles.length !== files.length) {
+        const message = [];
+        if (validFiles.length < files.length) {
+          message.push('Beberapa file tidak valid (hanya gambar dengan ukuran max 10MB)');
+        }
+        if (limitedFiles.length < validFiles.length) {
+          message.push('Maksimal 5 gambar yang dapat dipilih');
+        }
+        setErr(message.join('. '));
+        setTimeout(() => setErr(''), 3000);
+      }
+      
+      console.log(`Final selected files:`, limitedFiles.map(f => ({ name: f.name, type: f.type, size: f.size })));
+      setSelectedImages(limitedFiles);
+    };
 
     const validateForm = () => {
       if (!form.productName.trim()) {
@@ -397,14 +572,34 @@ const SellerDashboard = () => {
       try {
         localStorage.removeItem('productFormBackup');
         const formData = new FormData();
-        const productData = { ...form, price: Number(form.price), stock: Number(form.stock), idCategory: form.idCategory ? Number(form.idCategory) : null };
-
+        
         if (product && product.productId) {
+            // For update: exclude productId and other fields not in ProductUpdateDTO
+            const productData = { 
+              productName: form.productName,
+              description: form.description,
+              price: Number(form.price), 
+              stock: Number(form.stock), 
+              idCategory: form.idCategory ? Number(form.idCategory) : null,
+              generalCategory: form.generalCategory,
+              isActive: form.isActive
+            };
             formData.append('productData', JSON.stringify(productData));
             if (selectedImages.length > 0) selectedImages.forEach(img => formData.append('images', img));
             await api.put(`/api/products/${product.productId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         } else {
-            formData.append('productData', JSON.stringify({ ...productData, idToko }));
+            // For create: include idToko
+            const productData = { 
+              productName: form.productName,
+              description: form.description,
+              price: Number(form.price), 
+              stock: Number(form.stock), 
+              idCategory: form.idCategory ? Number(form.idCategory) : null,
+              generalCategory: form.generalCategory,
+              isActive: form.isActive,
+              idToko: tokoId 
+            };
+            formData.append('productData', JSON.stringify(productData));
             selectedImages.forEach(img => formData.append('images', img));
             await api.post('/api/products', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         }
@@ -668,16 +863,24 @@ const SellerDashboard = () => {
                       <input 
                         type="file" 
                         multiple 
-                        accept="image/*" 
+                        accept="image/jpeg,image/jpg,image/png,image/webp" 
                         onChange={handleFileChange} 
                         className="w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
+                        id="product-images"
                       />
                       <div className="mt-4 text-center">
                         <Package className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="mt-2 text-sm text-gray-600">
                           <span className="font-semibold">Klik untuk upload</span> atau drag & drop gambar
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP hingga 10MB (maksimal 5 gambar)</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, WEBP hingga 10MB (maksimal 5 gambar)
+                          {selectedImages.length > 0 && (
+                            <span className="block mt-1 text-green-600 font-medium">
+                              {selectedImages.length} gambar dipilih
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -686,30 +889,56 @@ const SellerDashboard = () => {
                   {(product?.imageUrls?.length > 0 || selectedImages.length > 0) && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-3">Preview Gambar</label>
+                      
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {selectedImages.length > 0 ? (
-                          selectedImages.map((file, i) => (
-                            <div key={i} className="relative group">
-                              <img 
-                                src={URL.createObjectURL(file)} 
-                                alt="Preview" 
-                                className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 group-hover:border-red-300 transition-colors"
+                          selectedImages.map((file, i) => {
+                            console.log(`Rendering preview for file ${i}:`, {
+                              name: file.name,
+                              type: file.type,
+                              size: file.size
+                            });
+                            
+                            return (
+                              <PreviewImage 
+                                key={`${file.name}-${i}`}
+                                file={file}
+                                index={i}
+                                onRemove={(index) => {
+                                  const newImages = selectedImages.filter((_, idx) => idx !== index);
+                                  setSelectedImages(newImages);
+                                }}
                               />
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100">Gambar Baru</span>
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
                           product?.imageUrls?.map((url, i) => (
                             <div key={i} className="relative group">
-                              <img 
-                                src={url.startsWith('http') ? url : `http://localhost:6060${url}`} 
-                                alt="Current" 
-                                className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 group-hover:border-red-300 transition-colors"
-                              />
+                              <div className="w-full h-32 bg-gray-100 rounded-lg border-2 border-gray-200 group-hover:border-red-300 transition-colors overflow-hidden">
+                                <img 
+                                  src={url.startsWith('http') ? url : `http://localhost:6060${url}`} 
+                                  alt={`Current ${i + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    console.error(`Failed to load current image ${i + 1}:`, url);
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div 
+                                  className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500"
+                                  style={{ display: 'none' }}
+                                >
+                                  <div className="text-center">
+                                    <Package className="w-8 h-8 mx-auto mb-1" />
+                                    <span className="text-xs">Error loading</span>
+                                  </div>
+                                </div>
+                              </div>
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100">Gambar Saat Ini</span>
+                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 bg-black bg-opacity-50 px-2 py-1 rounded">
+                                  Gambar Saat Ini
+                                </span>
                               </div>
                             </div>
                           ))

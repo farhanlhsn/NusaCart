@@ -300,7 +300,7 @@ export const categoryAPI = {
 // PRODUCT API ENDPOINTS
 // ========================
 export const productAPI = {
-  getAll: (page = 0, size = 10) => api.get(`/api/products?page=${page}&size=${size}`),
+  getAll: (page = 0, size = 12) => api.get(`/api/products?page=${page}&size=${size}`),
   getAllWithFilters: (queryString) => api.get(`/api/products?${queryString}`),
 
   // Get all products with comprehensive filtering
@@ -309,7 +309,7 @@ export const productAPI = {
     
     // Basic pagination
     queryParams.append('page', params.page || 0);
-    queryParams.append('size', params.size || 10);
+    queryParams.append('size', params.size || 12);
     
     // Optional filters
     if (params.categoryId) queryParams.append('categoryId', params.categoryId);
@@ -327,7 +327,7 @@ export const productAPI = {
   },
   
   getById: (id) => api.get(`/api/products/${id}`),
-  getByTokoId: (tokoId, page = 0, size = 10) => api.get(`/api/products/toko/${tokoId}?page=${page}&size=${size}`),
+  getByTokoId: (tokoId, page = 0, size = 12) => api.get(`/api/products/toko/${tokoId}?page=${page}&size=${size}`),
   getByCategoryId: (categoryId) => api.get(`/api/products/category/${categoryId}`),
   search: (name) => api.get(`/api/products/search?name=${encodeURIComponent(name)}`),
   getActive: () => api.get('/api/products/active'),

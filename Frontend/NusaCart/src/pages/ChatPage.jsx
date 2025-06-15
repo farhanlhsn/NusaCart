@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
     Search, 
     Send, 
@@ -17,15 +18,19 @@ import {
 } from "lucide-react";
 import ReportChat from '../components/ReportChat';
 import ChatInput from '../components/ChatInput';
+import ChatItem from '../components/ChatItem';
+import AttachmentCard from '../components/AttachmentCard';
 import useChatStore from '../stores/chatStore';
 import useAuthStore from '../stores/authStore';
 
 export default function ChatPage() {
+    const navigate = useNavigate();
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const [selectedChat, setSelectedChat] = useState(null);
     // Removed message state as it's now handled by ChatInput
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [isMobileView, setIsMobileView] = useState(false);
     const [showChatList, setShowChatList] = useState(true);
     const [showDropdown, setShowDropdown] = useState(false);
@@ -34,41 +39,35 @@ export default function ChatPage() {
     const [reportedUserId, setReportedUserId] = useState(null);
 
     const { user } = useAuthStore();
-    const {
-        conversations,
-        currentConversation,
-        messages,
-        loading,
-        error,
-        fetchConversations,
-        fetchMessages,
-        sendMessage,
-        setCurrentConversation,
-        fetchStoreInfo,
-        clearError
-    } = useChatStore();
-
-    // Load conversations when component mounts (with ref to prevent re-renders)
-    const fetchConversationsRef = useRef(fetchConversations);
-    const fetchMessagesRef = useRef(fetchMessages);
     
-    useEffect(() => {
-        fetchConversationsRef.current = fetchConversations;
-        fetchMessagesRef.current = fetchMessages;
-    });
+    // Use individual selectors to avoid infinite loops
+    const conversations = useChatStore(state => state.conversations);
+    const currentConversation = useChatStore(state => state.currentConversation);
+    const messages = useChatStore(state => state.messages);
+    const loading = useChatStore(state => state.loading);
+    const error = useChatStore(state => state.error);
+    const fetchConversations = useChatStore(state => state.fetchConversations);
+    const fetchMessages = useChatStore(state => state.fetchMessages);
+    const sendMessage = useChatStore(state => state.sendMessage);
+    const setCurrentConversation = useChatStore(state => state.setCurrentConversation);
+    const fetchStoreInfo = useChatStore(state => state.fetchStoreInfo);
+    const clearError = useChatStore(state => state.clearError);
 
+    // Load conversations when component mounts
     useEffect(() => {
-        if (user) {
-            fetchConversationsRef.current();
+        if (user?.userId) {
+            fetchConversations();
         }
-    }, [user]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.userId]); // Only depend on user ID to prevent loops
 
     // Load messages when conversation changes
     useEffect(() => {
         if (currentConversation?.id) {
-            fetchMessagesRef.current(currentConversation.id);
+            fetchMessages(currentConversation.id);
         }
-    }, [currentConversation?.id]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentConversation?.id]); // Only depend on conversation ID
 
     const handleOpenReport = async () => {
         try {
@@ -98,8 +97,19 @@ export default function ChatPage() {
         [currentConversation?.id, messages]
     );
 
-    const filteredChats = conversations.filter(chat => 
-        chat.storeName.toLowerCase().includes(searchQuery.toLowerCase())
+    // Debounce search query to prevent excessive filtering
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+    
+    const filteredChats = useMemo(() => 
+        conversations.filter(chat => 
+            chat.storeName.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        ),
+        [conversations, debouncedSearchQuery]
     );
 
     const scrollToBottom = () => {
@@ -152,20 +162,43 @@ export default function ChatPage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showDropdown]);
 
-    const handleSendMessage = useCallback(async (messageText) => {
-        if (messageText && currentConversation) {
-            try {
-                await sendMessage(currentConversation.id, messageText);
-                setShouldAutoScroll(true);
-            } catch (error) {
-                console.error('Failed to send message:', error);
+    const handleSendMessage = useCallback(async (messageData) => {
+        // Handle both string (old format) and object (new format) inputs
+        const isStringMessage = typeof messageData === 'string';
+        
+        if (isStringMessage) {
+            // Old format: just text
+            if (messageData && currentConversation) {
+                try {
+                    await sendMessage(currentConversation.id, messageData);
+                    setShouldAutoScroll(true);
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                }
+            }
+        } else {
+            // New format: object with text and attachment
+            if ((messageData.text || messageData.attachment) && currentConversation) {
+                try {
+                    // Prepare message payload for backend
+                    const payload = {
+                        text: messageData.text || '',
+                        orderId: messageData.attachment?.type === 'order' ? messageData.attachment.id : null,
+                        productId: messageData.attachment?.type === 'product' ? messageData.attachment.id : null
+                    };
+                    
+                    await sendMessage(currentConversation.id, payload);
+                    setShouldAutoScroll(true);
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                }
             }
         }
     }, [currentConversation, sendMessage]);
 
     // Removed handleKeyPress as it's now handled by ChatInput
 
-    const formatTime = (timestamp) => {
+    const formatTime = useCallback((timestamp) => {
         if (!timestamp) return '';
         
         // Handle time-only format from backend (e.g., "23:37")
@@ -195,7 +228,7 @@ export default function ChatPage() {
                 month: 'short' 
             });
         }
-    };
+    }, []);
 
     const renderMessageStatus = (status) => {
         switch (status) {
@@ -214,13 +247,13 @@ export default function ChatPage() {
         }
     };
 
-    const handleChatSelect = (chat) => {
+    const handleChatSelect = useCallback((chat) => {
         setSelectedChat(chat.id);
         setCurrentConversation(chat);
         if (isMobileView) {
             setShowChatList(false);
         }
-    };
+    }, [isMobileView, setCurrentConversation]);
 
     const handleBlockUser = () => {
         // Handle block user logic
@@ -232,8 +265,11 @@ export default function ChatPage() {
     const handleViewProfile = () => {
         // Handle view profile logic
         console.log('View profile:', currentConversation?.storeName);
+        navigate(`/toko/${currentConversation?.storeId}`);
         setShowDropdown(false);
     };
+
+    
 
     if (!user) {
         return (
@@ -287,57 +323,13 @@ export default function ChatPage() {
                     </div>
                 ) : (
                     filteredChats.map((chat) => (
-                        <div
+                        <ChatItem
                             key={chat.id}
-                            onClick={() => handleChatSelect(chat)}
-                            className={`flex items-center p-4 mx-2 my-1 rounded-2xl hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
-                                selectedChat === chat.id ? 'bg-red-50 shadow-md border border-red-100' : ''
-                            }`}
-                        >
-                            <div className="relative">
-                                <img
-                                    src={chat.storeAvatar}
-                                    alt={chat.storeName}
-                                    className="w-14 h-14 rounded-full object-cover shadow-md"
-                                    onError={(e) => {
-                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.storeName)}&background=ef4444&color=fff&size=100`;
-                                    }}
-                                />
-                                {chat.online && (
-                                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
-                                )}
-                            </div>
-                            
-                            <div className="ml-4 flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                    <div className="flex items-center">
-                                        <h3 className={`font-semibold truncate ${
-                                            selectedChat === chat.id ? 'text-red-600' : 'text-gray-900'
-                                        }`}>
-                                            {chat.storeName}
-                                        </h3>
-                                        {chat.type === 'store' && (
-                                            <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                                                Toko
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
-                                        {formatTime(chat.lastMessageTime)}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-gray-600 truncate flex-1">
-                                        {chat.lastMessage}
-                                    </p>
-                                    {chat.unreadCount > 0 && (
-                                        <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-sm">
-                                            {chat.unreadCount}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                            chat={chat}
+                            isSelected={selectedChat === chat.id}
+                            onSelect={handleChatSelect}
+                            formatTime={formatTime}
+                        />
                     ))
                 )}
             </div>
@@ -362,16 +354,19 @@ export default function ChatPage() {
                                 )}
                                 <div className="relative">
                                     <img
-                                        src={currentConversation.storeAvatar}
+                                        key={`header-avatar-${currentConversation.id}`}
+                                        src={currentConversation.storeAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentConversation.storeName)}&background=ef4444&color=fff&size=100`}
                                         alt={currentConversation.storeName}
                                         className="w-12 h-12 rounded-full object-cover shadow-md"
                                         onError={(e) => {
-                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentConversation.storeName)}&background=ef4444&color=fff&size=100`;
+                                            // Prevent infinite loop by checking if already using fallback
+                                            if (!e.target.src.includes('ui-avatars.com')) {
+                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentConversation.storeName)}&background=ef4444&color=fff&size=100`;
+                                            }
                                         }}
+                                        loading="lazy"
                                     />
-                                    {currentConversation.online && (
-                                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                                    )}
+
                                 </div>
                                 <div className="ml-4">
                                     <h2 className="font-semibold text-gray-900 flex items-center">
@@ -383,11 +378,7 @@ export default function ChatPage() {
                                         )}
                                     </h2>
                                     <p className="text-sm text-gray-600">
-                                        {currentConversation.online ? (
-                                            <span className="text-green-600 font-medium">● Online</span>
-                                        ) : (
-                                            currentConversation.lastMessage
-                                        )}
+                                        {currentConversation.lastMessage}
                                     </p>
                                 </div>
                             </div>
@@ -456,20 +447,49 @@ export default function ChatPage() {
                                     key={msg.id}
                                     className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div
-                                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-                                            msg.senderType === 'user'
-                                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                                                : 'bg-white text-gray-900 border border-gray-200'
-                                        }`}
-                                    >
-                                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
-                                        <div className={`flex items-center justify-end mt-2 space-x-1 ${
-                                            msg.senderType === 'user' ? 'text-red-100' : 'text-gray-500'
-                                        }`}>
-                                            <span className="text-xs">{formatTime(msg.timestamp)}</span>
-                                            {msg.senderType === 'user' && renderMessageStatus(msg.status)}
-                                        </div>
+                                    <div className={`max-w-xs lg:max-w-md ${msg.senderType === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+                                        {/* Message Text */}
+                                        {msg.text && (
+                                            <div
+                                                className={`px-4 py-3 rounded-2xl shadow-sm ${
+                                                    msg.senderType === 'user'
+                                                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                                                        : 'bg-white text-gray-900 border border-gray-200'
+                                                }`}
+                                            >
+                                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                                                <div className={`flex items-center justify-end mt-2 space-x-1 ${
+                                                    msg.senderType === 'user' ? 'text-red-100' : 'text-gray-500'
+                                                }`}>
+                                                    <span className="text-xs">{formatTime(msg.timestamp)}</span>
+                                                    {msg.senderType === 'user' && renderMessageStatus(msg.status)}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Attachment */}
+                                        {(msg.orderId || msg.productId) && (
+                                            <AttachmentCard
+                                                type={msg.orderId ? 'order' : 'product'}
+                                                orderId={msg.orderId}
+                                                productId={msg.productId}
+                                                data={null} // We could fetch this data if needed
+                                            />
+                                        )}
+                                        
+                                        {/* Timestamp for attachment-only messages */}
+                                        {!msg.text && (msg.orderId || msg.productId) && (
+                                            <div className={`mt-1 text-xs ${
+                                                msg.senderType === 'user' ? 'text-gray-500 text-right' : 'text-gray-500'
+                                            }`}>
+                                                {formatTime(msg.timestamp)}
+                                                {msg.senderType === 'user' && (
+                                                    <span className="ml-1">
+                                                        {renderMessageStatus(msg.status)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -481,6 +501,7 @@ export default function ChatPage() {
                     <ChatInput 
                         onSendMessage={handleSendMessage}
                         disabled={loading}
+                        currentConversation={currentConversation}
                     />
                 </>
             ) : (

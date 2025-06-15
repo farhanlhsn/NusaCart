@@ -13,7 +13,7 @@ const useProductStore = create((set, get) => ({
     currentPage: 0,
     totalPages: 0,
     totalElements: 0,
-    size: 20
+    size: 12
   },
   creating: false,
   updating: false,
@@ -28,10 +28,10 @@ const useProductStore = create((set, get) => ({
   clearError: () => set({ error: null }),
 
   // Fetch all products with pagination
-  fetchProducts: async (page = 0, size = 20) => {
+  fetchProducts: async (page = 0, size = 12) => {
     // Ensure parameters are valid numbers
     const validPage = Number.isInteger(page) ? page : 0;
-    const validSize = Number.isInteger(size) ? size : 20;
+    const validSize = Number.isInteger(size) ? size : 12;
     
     set({ loading: true, error: null });
     try {
@@ -60,9 +60,9 @@ const useProductStore = create((set, get) => ({
   },
 
   // Fetch products with filters
-  fetchProductsWithFilters: async (page = 0, size = 20, filters = {}) => {
+  fetchProductsWithFilters: async (page = 0, size = 12, filters = {}) => {
     const validPage = Number.isInteger(page) ? page : 0;
-    const validSize = Number.isInteger(size) ? size : 20;
+    const validSize = Number.isInteger(size) ? size : 12;
     
     set({ loading: true, error: null });
     try {
@@ -140,7 +140,7 @@ const useProductStore = create((set, get) => ({
   },
 
   // Fetch products by toko ID
-  fetchProductsByTokoId: async (tokoId, page = 0, size = 20) => {
+  fetchProductsByTokoId: async (tokoId, page = 0, size = 12) => {
     set({ loading: true, error: null });
     try {
       const response = await productAPI.getByTokoId(tokoId, page, size);
@@ -387,7 +387,7 @@ const useProductStore = create((set, get) => ({
       currentPage: 0,
       totalPages: 0,
       totalElements: 0,
-      size: 20
+      size: 12
     },
     creating: false,
     updating: false,

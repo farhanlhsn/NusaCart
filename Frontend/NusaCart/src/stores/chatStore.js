@@ -1,13 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { subscribeWithSelector } from 'zustand/middleware';
 import { chatAPI, tokoAPI } from '../services/api';
 import useAuthStore from './authStore';
 
-const useChatStore = create(
-  subscribeWithSelector(
-    persist(
-      (set, get) => ({
+const useChatStore = create((set, get) => ({
       // State
       conversations: [],
       currentConversation: null,
@@ -15,6 +10,7 @@ const useChatStore = create(
       loading: false,
       error: null,
       storeInfo: {},
+      lastFetchTime: null, // Add caching timestamp
 
       // Actions
       setLoading: (loading) => set({ loading }),
@@ -22,50 +18,77 @@ const useChatStore = create(
       clearError: () => set({ error: null }),
 
       // Get conversations - using mock data since backend doesn't have chat yet
-      fetchConversations: async () => {
+      fetchConversations: async (forceRefresh = false) => {
+        const { conversations, lastFetchTime } = get();
+        
+        // Cache for 5 minutes to prevent unnecessary refetches
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        const now = Date.now();
+        
+        if (!forceRefresh && conversations.length > 0 && lastFetchTime && (now - lastFetchTime) < CACHE_DURATION) {
+          return conversations; // Return cached data
+        }
+        
         set({ loading: true, error: null });
         try {
           // For now, use toko API to get stores and create mock conversations
           const response = await tokoAPI.getAll(0, 10);
           const stores = response.data.data || response.data.content || [];
           
-          // Create mock conversations from stores
-          const mockConversations = stores.map((store, index) => ({
-            id: store.idToko,
-            storeId: store.idToko,
-            storeName: store.namaToko,
-            storeAvatar: store.profilePictureToko 
-              ? (store.profilePictureToko.startsWith('http') 
-                 ? store.profilePictureToko 
-                 : `http://localhost:6060${store.profilePictureToko}`)
-              : `https://ui-avatars.com/api/?name=${encodeURIComponent(store.namaToko)}&background=ef4444&color=fff&size=100`,
-            lastMessage: `Aktif • ${index < 3 ? 'Online sekarang' : `${index + 1} jam lalu`}`,
-            lastMessageTime: new Date().toISOString(),
-            unreadCount: index < 2 ? index + 1 : 0,
-            online: Math.random() > 0.5,
-            type: 'store'
-          }));
+          // Create mock conversations from stores with stable data
+          const baseTime = new Date('2024-01-15T10:00:00Z'); // Fixed base time
+          const mockConversations = stores.map((store, index) => {
+            // Create varied last messages
+            const lastMessages = [
+              'Halo, ada yang bisa saya bantu?',
+              'Selamat datang di toko kami!',
+              'Terima kasih sudah berkunjung',
+              'Ada pertanyaan tentang produk?',
+              'Silakan lihat koleksi terbaru kami',
+              'Produk ready stock ya!',
+              'Bisa chat untuk info lebih lanjut',
+              'Promo menarik hari ini!'
+            ];
+            
+            return {
+              id: store.idToko,
+              storeId: store.idToko,
+              storeName: store.namaToko,
+              storeAvatar: store.profilePictureToko 
+                ? (store.profilePictureToko.startsWith('http') 
+                   ? store.profilePictureToko 
+                   : `http://localhost:6060${store.profilePictureToko}`)
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(store.namaToko)}&background=ef4444&color=fff&size=100`,
+              lastMessage: lastMessages[index % lastMessages.length],
+              lastMessageTime: new Date(baseTime.getTime() - (index * 3600000)).toISOString(), // Stable time based on index
+              unreadCount: 0,
+              online: false, // Remove online status
+              type: 'store'
+            };
+          });
 
           set({
             conversations: mockConversations,
-            loading: false
+            loading: false,
+            lastFetchTime: Date.now()
           });
 
           return mockConversations;
         } catch (error) {
           console.log('Chat fetch error, using fallback:', error);
           
-          // Fallback mock data
+          // Fallback mock data with stable timestamps
+          const fallbackBaseTime = new Date('2024-01-15T10:00:00Z');
           const fallbackConversations = [
             {
               id: 1,
               storeId: 1,
               storeName: 'Electronics Store',
               storeAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-              lastMessage: 'Selamat datang di toko kami!',
-              lastMessageTime: new Date().toISOString(),
-              unreadCount: 2,
-              online: true,
+              lastMessage: 'Halo, ada yang bisa saya bantu?',
+              lastMessageTime: fallbackBaseTime.toISOString(),
+              unreadCount: 0,
+              online: false,
               type: 'store'
             },
             {
@@ -73,9 +96,9 @@ const useChatStore = create(
               storeId: 2,
               storeName: 'Fashion Outlet',
               storeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-              lastMessage: 'Ada produk baru yang menarik!',
-              lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
-              unreadCount: 1,
+              lastMessage: 'Selamat datang di toko kami!',
+              lastMessageTime: new Date(fallbackBaseTime.getTime() - 3600000).toISOString(),
+              unreadCount: 0,
               online: false,
               type: 'store'
             }
@@ -83,7 +106,8 @@ const useChatStore = create(
 
           set({
             conversations: fallbackConversations,
-            loading: false
+            loading: false,
+            lastFetchTime: Date.now()
           });
 
           return fallbackConversations;
@@ -92,6 +116,13 @@ const useChatStore = create(
 
       // Get messages for a conversation using real backend
       fetchMessages: async (conversationId) => {
+        const { messages } = get();
+        
+        // Return cached messages if available
+        if (messages[conversationId] && messages[conversationId].length > 0) {
+          return messages[conversationId];
+        }
+        
         set({ loading: true, error: null });
         try {
           const { user } = useAuthStore.getState();
@@ -179,8 +210,15 @@ const useChatStore = create(
       },
 
       // Send a message using real backend
-      sendMessage: async (conversationId, messageText) => {
-        if (!messageText.trim()) return;
+      sendMessage: async (conversationId, messagePayload) => {
+        // Handle both old string format and new object format
+        const isStringMessage = typeof messagePayload === 'string';
+        const messageText = isStringMessage ? messagePayload : messagePayload.text;
+        const orderId = isStringMessage ? null : messagePayload.orderId;
+        const productId = isStringMessage ? null : messagePayload.productId;
+
+        if (!messageText.trim() && !orderId && !productId) return;
+        
         try {
           const { user } = useAuthStore.getState();
           // Get store info to get seller ID
@@ -192,13 +230,16 @@ const useChatStore = create(
             console.error('Conversation ID:', conversationId);
             throw new Error('Seller ID not found in store data');
           }
+          
           // receiverId = sellerId (userId lawan chat)
           const messageData = {
             receiverId: sellerId,
-            message: messageText.trim(),
-            productId: null, // Can be set if needed
-            orderId: null    // Can be set if needed
+            message: messageText.trim() || '',
+            productId: productId || null,
+            orderId: orderId || null
           };
+
+          console.log('Sending message with payload:', messageData);
 
           const response = await chatAPI.sendMessage(messageData);
           const savedMessage = response.data;
@@ -216,6 +257,11 @@ const useChatStore = create(
             orderId: savedMessage.orderId
           };
 
+          // Update last message preview
+          const lastMessageText = messageText.trim() || 
+            (orderId ? `Lampiran Pesanan #${orderId}` : '') ||
+            (productId ? `Lampiran Produk` : '');
+
           set(state => ({
             messages: {
               ...state.messages,
@@ -226,7 +272,11 @@ const useChatStore = create(
             },
             conversations: state.conversations.map(conv =>
               conv.id === conversationId 
-                ? { ...conv, lastMessage: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''), lastMessageTime: new Date().toISOString() }
+                ? { 
+                    ...conv, 
+                    lastMessage: lastMessageText.substring(0, 50) + (lastMessageText.length > 50 ? '...' : ''), 
+                    lastMessageTime: new Date().toISOString() 
+                  }
                 : conv
             )
           }));
@@ -240,11 +290,13 @@ const useChatStore = create(
           const fallbackMessage = {
             id: tempId,
             conversationId,
-            text: messageText.trim(),
+            text: messageText.trim() || (orderId ? `Lampiran Pesanan #${orderId}` : '') || (productId ? `Lampiran Produk` : ''),
             senderId: user?.userId || 'current_user',
             senderType: 'user',
             timestamp: new Date().toISOString(),
-            status: 'failed'
+            status: 'failed',
+            productId: productId || null,
+            orderId: orderId || null
           };
 
           set(state => ({
@@ -310,23 +362,27 @@ const useChatStore = create(
         }
       },
 
-      // Get store info
+      // Get store info with caching
       fetchStoreInfo: async (storeId) => {
+        const { storeInfo } = get();
+        
+        // Return cached data if available
+        if (storeInfo[storeId]) {
+          return storeInfo[storeId];
+        }
+        
         try {
-          console.log('Fetching store info for storeId:', storeId);
           const response = await tokoAPI.getById(storeId);
-          const storeInfo = response.data;
-          console.log('Store info response:', storeInfo);
-          console.log('idSeller from response:', storeInfo?.idSeller);
+          const storeData = response.data;
           
           set(state => ({
             storeInfo: {
               ...state.storeInfo,
-              [storeId]: storeInfo
+              [storeId]: storeData
             }
           }));
 
-          return storeInfo;
+          return storeData;
         } catch (error) {
           console.log('Failed to fetch store info:', error);
           return null;
@@ -343,17 +399,7 @@ const useChatStore = create(
           error: null
         });
       }
-      }),
-      {
-        name: 'chat-storage',
-        partialize: (state) => ({
-          conversations: state.conversations,
-          messages: state.messages,
-          storeInfo: state.storeInfo
-        }),
-      }
-    )
-  )
+    })
 );
 
 export default useChatStore; 
