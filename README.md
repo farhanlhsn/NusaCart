@@ -1,6 +1,6 @@
 # NusaCart - Platform E-Commerce Indonesia
 
-![NusaCart Logo](Frontend/NusaCart/src/assets/Logo.png)
+![NusaCart Logo](Frontend/NusaCart/src/assets/logoFooter.png)
 
 ## 📋 Deskripsi Proyek
 
