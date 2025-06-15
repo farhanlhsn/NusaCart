@@ -193,6 +193,56 @@ if (typeof window !== 'undefined') {
 }
 
 // ========================
+// PHONE UTILITIES
+// ========================
+
+/**
+ * Format nomor telepon untuk ditampilkan ke user
+ * Mengubah format internasional kembali ke format Indonesia yang familiar
+ * 
+ * @param {string} phoneNumber - Nomor telepon dalam format internasional (628xxx)
+ * @returns {string} - Nomor telepon dalam format yang user-friendly (08xxx)
+ */
+export const formatPhoneNumberForDisplay = (phoneNumber) => {
+  if (!phoneNumber) return '';
+  
+  // Jika nomor dimulai dengan 62, ubah ke 08
+  if (phoneNumber.startsWith('62')) {
+    return '0' + phoneNumber.substring(2);
+  }
+  
+  // Jika sudah dalam format 08, return as is
+  if (phoneNumber.startsWith('08')) {
+    return phoneNumber;
+  }
+  
+  // Jika format lain, return as is
+  return phoneNumber;
+};
+
+/**
+ * Mask nomor telepon untuk privacy
+ * Contoh: 081234567890 -> 0812****7890
+ * 
+ * @param {string} phoneNumber - Nomor telepon
+ * @returns {string} - Nomor telepon yang di-mask
+ */
+export const maskPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber) return '';
+  
+  const formatted = formatPhoneNumberForDisplay(phoneNumber);
+  
+  if (formatted.length < 8) return formatted;
+  
+  // Tampilkan 4 digit pertama dan 4 digit terakhir
+  const start = formatted.substring(0, 4);
+  const end = formatted.substring(formatted.length - 4);
+  const middle = '*'.repeat(formatted.length - 8);
+  
+  return start + middle + end;
+};
+
+// ========================
 // AUTH API ENDPOINTS
 // ========================
 export const authAPI = {
@@ -201,6 +251,8 @@ export const authAPI = {
   verifyRegistration: (data) => api.post('/api/auth/verify-registration', data),
   resendRegistrationOTP: (data) => api.post('/api/auth/resend-registration-otp', data),
   updatePhoneRegistration: (data) => api.post('/api/auth/update-phone-registration', data),
+  updateEmailRegistration: (data) => api.post('/api/auth/update-email-registration', data),
+  getRegistrationInfo: (data) => api.post('/api/auth/get-registration-info', data),
   logout: () => api.post('/api/auth/logout'),
   refresh: () => api.post('/api/auth/refresh'),
   forgotPassword: (data) => api.post('/api/auth/forget_password', data),

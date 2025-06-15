@@ -2,12 +2,13 @@ import React, { useEffect } from "react";
 import logo from "../assets/Logo.png";
 import asset from "../assets/loginNregister.png";
 import useAuthStore from "../stores/authStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 
 export default function LoginPage() {
 	const { isLoggedIn, login } = useAuthStore();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [formData, setFormData] = useState({
 		email: "",
 		password: ""
@@ -21,6 +22,39 @@ export default function LoginPage() {
 			navigate("/home");
 		}
 	}, [isLoggedIn, navigate]);
+
+	// Handle state message from verification page
+	useEffect(() => {
+		if (location.state?.message) {
+			if (location.state.type === "info") {
+				setSuccess(location.state.message);
+			} else {
+				setError(location.state.message);
+			}
+			// Clear the state to prevent showing the message again on refresh
+			navigate(location.pathname, { replace: true });
+		}
+	}, [location.state, navigate, location.pathname]);
+
+	// Auto hide success message after 4 seconds
+	useEffect(() => {
+		if (success) {
+			const timer = setTimeout(() => {
+				setSuccess("");
+			}, 4000);
+			return () => clearTimeout(timer);
+		}
+	}, [success]);
+
+	// Auto hide error message after 4 seconds
+	useEffect(() => {
+		if (error) {
+			const timer = setTimeout(() => {
+				setError("");
+			}, 4000);
+			return () => clearTimeout(timer);
+		}
+	}, [error]);
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
@@ -37,15 +71,12 @@ export default function LoginPage() {
 		setIsLoading(true);
 		
 		try {
-			console.log("Sending data to server:", formData);
-			// Use authStore login method instead of direct API call to avoid double request
 			const result = await login(formData);
 			
-			console.log("Login successful:", result);
+			const isUserVerified = result.verified !== undefined ? result.verified : result.user?.verified;
 			
-			// Check if user is verified
-			if (result.user && !result.user.isVerified) {
-				setSuccess("Login berhasil! Mengalihkan ke halaman verifikasi...");
+			if (result.user && !isUserVerified) {
+				setSuccess("User belum diverifikasi! Mengalihkan ke halaman verifikasi...");
 				setTimeout(() => {
 					navigate(`/verify-registration?email=${encodeURIComponent(result.user.email)}`);
 				}, 1500);

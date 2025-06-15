@@ -110,7 +110,12 @@ export default function UserRegisterPage() {
 				if (statusCode === 409) {
 					setError("Email sudah terdaftar. Silakan gunakan email lain.");
 				} else if (statusCode === 400) {
-					setError(errorMessage || "Data yang dimasukkan tidak valid.");
+					// Handle specific error messages for phone number and email
+					if (errorMessage.includes("sudah terdaftar")) {
+						setError(errorMessage);
+					} else {
+						setError(errorMessage || "Data yang dimasukkan tidak valid.");
+					}
 				} else if (statusCode === 500) {
 					setError("Terjadi kesalahan pada server. Silakan coba lagi nanti.");
 				} else {
@@ -205,10 +210,13 @@ export default function UserRegisterPage() {
 								value={formData.phoneNumber}
 								onChange={handleChange}
 								className="w-full px-4 md:px-6 py-2 md:py-3 rounded-2xl bg-white text-black focus:outline-none text-sm md:text-base"
-								placeholder="6281234567890"
+								placeholder="08123456789 atau 6281234567890"
 								required
 								disabled={isLoading}
 							/>
+							<p className="text-white/70 text-xs mt-1 text-left">
+								Format: 08xxxxxxxxx atau 62xxxxxxxxx
+							</p>
 						</div>
 						<button
 							type="submit"
