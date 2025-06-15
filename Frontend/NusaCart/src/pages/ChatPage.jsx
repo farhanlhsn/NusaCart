@@ -31,6 +31,7 @@ export default function ChatPage() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportedUserId, setReportedUserId] = useState(null);
 
     const { user } = useAuthStore();
     const {
@@ -69,19 +70,28 @@ export default function ChatPage() {
         }
     }, [currentConversation?.id]);
 
-    const handleOpenReport = () => {
-        setIsReportModalOpen(true);
+    const handleOpenReport = async () => {
+        try {
+            if (currentConversation?.id) {
+                const storeInfo = await fetchStoreInfo(currentConversation.id);
+                const sellerId = storeInfo?.idSeller || storeInfo?.seller?.userId || storeInfo?.sellerId || currentConversation.id;
+                setReportedUserId(sellerId);
+                setIsReportModalOpen(true);
+            }
+        } catch (error) {
+            console.error('Error getting store info for report:', error);
+            // Fallback to conversation id if store info fails
+            setReportedUserId(currentConversation?.id);
+            setIsReportModalOpen(true);
+        }
     };
 
     const handleCloseReport = () => {
         setIsReportModalOpen(false);
+        setReportedUserId(null);
     };
 
-    const handleSubmitReport = (reportData) => {
-        console.log('Report submitted:', reportData);
-        // Here you would typically send the report data to your backend API
-        alert('Laporan berhasil dikirim!');
-    };
+
 
     const currentMessages = useMemo(() => 
         currentConversation?.id ? (messages[currentConversation.id] || []) : [],
@@ -422,7 +432,7 @@ export default function ChatPage() {
                                         <ReportChat
                                             isOpen={isReportModalOpen}
                                             onClose={handleCloseReport}
-                                            onSubmit={handleSubmitReport}
+                                            reportedUserId={reportedUserId}
                                         />
                                     </div>
                                 )}
