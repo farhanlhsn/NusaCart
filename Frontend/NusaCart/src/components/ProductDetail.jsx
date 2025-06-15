@@ -5,6 +5,7 @@ import useCartStore from '../stores/cartStore';
 import useAuthStore from '../stores/authStore';
 import useWishlistStore from '../stores/wishlistStore';
 import useReviewStore from '../stores/reviewStore';
+import useOrderStore from '../stores/orderStore';
 import ReviewSection from './ReviewSection';
 import StarRating from './StarRating';
 import ChatButton from './ChatButton';
@@ -39,65 +40,54 @@ const ProductDetail = () => {
     fetchReviewsByProduct,
     forceRefreshProductReviews
   } = useReviewStore();
+  
+  const { fetchOrders } = useOrderStore();
 
   useEffect(() => {
-    // Debug logging untuk development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ProductDetail - URL id parameter:', id);
-    }
     
-    // Validate id parameter
     if (!id) {
-      console.error('ProductDetail - No id parameter found in URL');
+      console.error('No id parameter found in URL');
       navigate('/products', { replace: true });
       return;
     }
     
     const numericId = parseInt(id);
     if (isNaN(numericId) || numericId <= 0) {
-      console.error('ProductDetail - Invalid id parameter:', id);
+      console.error('Invalid id parameter:', id);
       navigate('/products', { replace: true });
       return;
     }
     
-    // Debug logging untuk development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ProductDetail - Fetching product with valid id:', numericId);
-    }
     
-    // Fetch data dengan promise untuk handling error yang lebih baik
     Promise.all([
       fetchProductById(numericId),
       fetchReviewsByProduct(numericId)
     ]).catch(error => {
-      console.error('ProductDetail - Error fetching data:', error);
-      // Error sudah dihandle di store, tidak perlu action tambahan
+      console.error('Error fetching data:', error);
     });
   }, [id, fetchProductById, fetchReviewsByProduct, navigate]);
 
-  // Load user's wishlist when component mounts
   useEffect(() => {
     if (user?.userId) {
       fetchWishlist(user.userId);
+      fetchOrders(); 
     }
-  }, [user?.userId, fetchWishlist]);
+  }, [user?.userId, fetchWishlist, fetchOrders]);
 
-  // Get reviews data from store (moved up to avoid initialization error)
   const numericId = parseInt(id);
   const reviews = (id && !isNaN(numericId)) ? getReviewsByProduct(numericId) || [] : [];
   const averageRating = (id && !isNaN(numericId)) ? getAverageRating(numericId) || 0 : 0;
 
-  // Watch for review changes to trigger update animation
   useEffect(() => {
     if (reviews && reviews.length > 0) {
       setReviewsUpdated(true);
       const timer = setTimeout(() => {
         setReviewsUpdated(false);
-      }, 1000); // Animation lasts 1 second
+      }, 1000); 
       
       return () => clearTimeout(timer);
     }
-  }, [reviews?.length, averageRating]); // Watch for changes in review count and rating with optional chaining
+  }, [reviews?.length, averageRating]); 
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -232,6 +222,12 @@ const ProductDetail = () => {
                   ({reviews?.length || 0} review{(reviews?.length || 0) !== 1 ? 's' : ''})
                 </span>
               </div>
+              
+              <span className="text-gray-400">|</span>
+              
+              <span className="text-sm text-gray-600">
+                {currentProduct.terjual || 0} terjual
+              </span>
               
               <span className="text-gray-400">|</span>
               

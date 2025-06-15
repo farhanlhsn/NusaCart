@@ -8,4 +8,7 @@ public class OrderItemResponseDTO {
     private String productName;
     private Integer quantity;
     private Double price;
+    private Integer storeId;
+    private String storeName;
+    private String imageUrl; 
 }

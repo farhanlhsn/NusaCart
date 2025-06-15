@@ -135,12 +135,33 @@ public class OrderService {
             dto.setPaymentStatus(order.getPaymentStatus());
             dto.setOrderStatus(order.getOrderStatus());
 
+            // Add discount information if available
+            if (order.getDiscount() != null) {
+                DiscountDTO discountDTO = DiscountDTO.builder()
+                        .promoCode(order.getDiscount().getPromoCode())
+                        .description(order.getDiscount().getDescription())
+                        .discountPercentage(order.getDiscount().getDiscountPercentage())
+                        .validUntil(order.getDiscount().getValidUntil())
+                        .usageLimit(order.getDiscount().getUsageLimit())
+                        .valid(order.getDiscount().isValid())
+                        .build();
+                dto.setDiscount(discountDTO);
+            }
+
             List<OrderItemResponseDTO> itemDTOs = order.getItems().stream().map(item -> {
                 OrderItemResponseDTO itemDto = new OrderItemResponseDTO();
                 itemDto.setProductId(item.getProduct().getProductId());
                 itemDto.setProductName(item.getProduct().getProductName());
                 itemDto.setQuantity(item.getQuantity());
                 itemDto.setPrice(item.getPrice());
+                itemDto.setStoreId(item.getProduct().getToko().getIdToko());
+                itemDto.setStoreName(item.getProduct().getToko().getNamaToko());
+                
+                // Set first image URL only
+                if (item.getProduct().getImageUrls() != null && !item.getProduct().getImageUrls().isEmpty()) {
+                    itemDto.setImageUrl(item.getProduct().getImageUrls().get(0));
+                }
+                
                 return itemDto;
             }).collect(Collectors.toList());
 

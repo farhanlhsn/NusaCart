@@ -9,14 +9,35 @@ const useSearchStore = create((set) => ({
   fetchSearchResults: async (searchName) => {
     set({ loading: true, error: '' });
     try {
-      const res = await api.get(`/api/products/search?name=${encodeURIComponent(searchName)}`);
+      // Fetch both products and stores in parallel
+      const [productsResponse, storesResponse] = await Promise.all([
+        api.get(`/api/products/search?name=${encodeURIComponent(searchName)}`),
+        api.get(`/api/toko/search?name=${encodeURIComponent(searchName)}&size=20`)
+      ]);
+      
+      // Extract products data
+      const products = Array.isArray(productsResponse.data) 
+        ? productsResponse.data 
+        : (productsResponse.data.content || productsResponse.data.products || productsResponse.data || []);
+      
+      // Extract stores data
+      const stores = Array.isArray(storesResponse.data) 
+        ? storesResponse.data 
+        : (storesResponse.data.content || storesResponse.data.data || storesResponse.data || []);
+      
       set({
-        results: Array.isArray(res.data) ? res.data : (res.data.content || res.data.products || res.data || []),
-        stores: [],
+        results: products,
+        stores: stores,
         loading: false
       });
     } catch (err) {
-      set({ error: 'Gagal mencari produk. Silakan coba lagi.', loading: false });
+      console.error('Search error:', err);
+      set({ 
+        error: 'Gagal mencari produk dan toko. Silakan coba lagi.', 
+        loading: false,
+        results: [],
+        stores: []
+      });
     }
   },
   setDummy: (searchName) => {

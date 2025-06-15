@@ -39,13 +39,15 @@ const ReviewSection = ({ productId }) => {
   }, [productId, fetchReviewsByProduct]);
 
   useEffect(() => {
-    // Check if user can review this product
+    // Check if user can review this product (must have purchased and received it)
     if (user && orders.length > 0) {
       const hasPurchased = orders.some(order =>
         order.items?.some(item => item.productId === productId) &&
         order.orderStatus === 'DELIVERED'
       );
       setCanReview(hasPurchased);
+    } else {
+      setCanReview(false);
     }
   }, [user, orders, productId]);
 

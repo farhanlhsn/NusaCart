@@ -5,9 +5,20 @@ import useTrackingStore from '../stores/trackingStore';
 import useAuthStore from '../stores/authStore';
 import useReviewStore from '../stores/reviewStore';
 
+const PackageIcon = () => (
+  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+);
+const StoreIcon = () => (
+  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>
+);
+const CheckCircleIcon = (props) => (
+  <svg {...props} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+);
+
+
 const OrderHistoryPage = () => {
   const { orders, loading, error, fetchOrders } = useOrderStore();
-  const { getTrackingTimeline, fetchTrackingByOrder, loading: trackingLoading } = useTrackingStore();
+  const { fetchTrackingByOrder, loading: trackingLoading } = useTrackingStore();
   const { hasUserReviewedProduct, fetchReviewsByProduct } = useReviewStore();
   const navigate = useNavigate();
   
@@ -21,12 +32,10 @@ const OrderHistoryPage = () => {
     if (user?.userId) {
       fetchOrders();
     } else if (user === null) {
-      // Only navigate to login if user is explicitly null (not loading)
       navigate('/login');
     }
   }, [user, fetchOrders, navigate]);
 
-  // Fetch reviews for products in delivered orders to check review status
   useEffect(() => {
     if (orders && orders.length > 0 && user?.userId) {
       const deliveredOrders = orders.filter(order => order.orderStatus === 'DELIVERED');
@@ -40,13 +49,7 @@ const OrderHistoryPage = () => {
     }
   }, [orders, user?.userId, fetchReviewsByProduct]);
 
-  // Debug logging untuk melihat struktur data order
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && orders && orders.length > 0) {
-      console.log('OrderHistory - Sample order structure:', orders[0]);
-      console.log('OrderHistory - Sample order items:', orders[0]?.items);
-    }
-  }, [orders]);
+  const sortedOrders = orders ? [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
 
   const handleViewTracking = async (order) => {
     setSelectedOrder(order);
@@ -55,109 +58,67 @@ const OrderHistoryPage = () => {
   };
 
   const handleReviewProduct = (item) => {
-    // Check if we have productId, otherwise search by product name
     if (item.productId) {
       navigate(`/product/${item.productId}`);
     } else if (item.productName) {
-      // Fallback: search by product name if no productId
       navigate(`/search?name=${encodeURIComponent(item.productName)}`);
     } else {
-      // Last resort: go to products page
       navigate('/products');
       alert('Silakan cari produk secara manual untuk menulis ulasan');
     }
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR'
-    }).format(price);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatPrice = (price) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(price);
+  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const getStatusColor = (status) => {
+    // Diganti dengan warna yang lebih modern dan konsisten
     switch (status?.toLowerCase()) {
-      case 'processing':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800';
-      case 'delivered':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'processing': return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed': return 'bg-sky-100 text-sky-800';
+      case 'shipped': return 'bg-indigo-100 text-indigo-800';
+      case 'delivered': return 'bg-emerald-100 text-emerald-800';
+      case 'cancelled': return 'bg-rose-100 text-rose-800';
+      default: return 'bg-slate-100 text-slate-800';
     }
   };
 
   const getPaymentStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'failed':
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'paid': return 'bg-emerald-100 text-emerald-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': case 'cancelled': return 'bg-rose-100 text-rose-800';
+      default: return 'bg-slate-100 text-slate-800';
     }
   };
 
-  // Check if there are products in the order that haven't been reviewed yet
   const hasUnreviewedProducts = (order) => {
     if (!order.items || !user?.userId) return false;
-    
-    return order.items.some(item => {
-      if (!item.productId) return false;
-      return !hasUserReviewedProduct(item.productId, user.userId);
-    });
+    return order.items.some(item => item.productId && !hasUserReviewedProduct(item.productId, user.userId));
   };
 
-  // Get count of unreviewed products in an order
   const getUnreviewedProductsCount = (order) => {
     if (!order.items || !user?.userId) return 0;
-    
-    return order.items.filter(item => {
-      if (!item.productId) return false;
-      return !hasUserReviewedProduct(item.productId, user.userId);
-    }).length;
+    return order.items.filter(item => item.productId && !hasUserReviewedProduct(item.productId, user.userId)).length;
   };
 
-  if (!user) {
-    return null; // Will redirect to login
-  }
+  if (!user) return null; // Akan redirect ke login
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-sky-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 text-xl mb-4">{error}</p>
-          <button
-            onClick={() => fetchOrders()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Retry
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md">
+          <p className="text-rose-600 text-xl mb-4">{error}</p>
+          <button onClick={() => fetchOrders()} className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700 transition-colors">
+            Coba Lagi
           </button>
         </div>
       </div>
@@ -165,215 +126,189 @@ const OrderHistoryPage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Breadcrumbs */}
-      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
-        <button 
-          onClick={() => navigate('/')} 
-          className="hover:text-red-600 cursor-pointer transition-colors"
-        >
-          Beranda
-        </button>
-        <span>|</span>
-        <button 
-          onClick={() => navigate('/profile')} 
-          className="hover:text-red-600 cursor-pointer transition-colors"
-        >
-          Profil
-        </button>
-        <span>|</span>
-        <span className="text-red-600 font-medium">Riwayat Pesanan</span>
-      </div>
-      {/* End Breadcrumbs */}
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
-        <p className="text-gray-600 mt-2">Lihat dan lacak semua pesanan Anda</p>
-      </div>
-
-      {orders.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-gray-400 text-6xl mb-4">📦</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Belum ada pesanan</h3>
-          <p className="text-gray-600 mb-6">
-            Anda belum memesan apa-apa. Mulai berbelanja untuk melihat pesanan Anda di sini.
-          </p>
-          <button
-            onClick={() => navigate('/products')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
-          >
-            Mulai Berbelanja
+    <div className="bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Breadcrumbs - Didesain ulang agar lebih bersih */}
+        <div className="flex items-center space-x-2 text-sm text-slate-500 mb-8">
+          <button onClick={() => navigate('/')} className="flex items-center hover:text-red-600 transition-colors">
+            Beranda
           </button>
+          <span>|</span>
+          <button onClick={() => navigate('/profile')} className="flex items-center hover:text-red-600 transition-colors">
+            Profil
+          </button>
+          <span>|</span>
+          <span className="font-medium text-slate-700">Riwayat Pesanan</span>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div key={order.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
-              <div className="p-6">
-                {/* Order Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Order #{order.id}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Placed on {formatDate(order.createdAt)}
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 mt-4 md:mt-0">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.orderStatus)}`}>
-                      {order.orderStatus}
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
-                      Payment: {order.paymentStatus}
-                    </span>
+
+        <div className="mb-10">
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Riwayat Pesanan Anda</h1>
+          <p className="text-slate-600 mt-3 text-lg">Lihat detail, lacak pengiriman, dan berikan ulasan untuk semua pesanan Anda di sini.</p>
+        </div>
+
+        {sortedOrders.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-xl shadow-md border border-slate-200">
+            <PackageIcon />
+            <h3 className="text-2xl font-bold text-slate-900 mt-6 mb-2">Anda Belum Memiliki Pesanan</h3>
+            <p className="text-slate-600 max-w-md mx-auto mb-8">
+              Semua pesanan yang Anda buat akan muncul di halaman ini. Mari mulai berbelanja!
+            </p>
+            <button
+              onClick={() => navigate('/products')}
+              className="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 font-semibold text-base transition-transform transform hover:scale-105"
+            >
+              Mulai Belanja
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {sortedOrders.map((order, orderIndex) => (
+              <div key={order.id} className="bg-white rounded-xl shadow-lg transition-shadow hover:shadow-2xl border border-slate-200/80 overflow-hidden">
+                {/* Bagian Header Kartu Pesanan */}
+                <div className="bg-slate-50/70 p-4 sm:p-6 border-b border-slate-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Pesanan #{sortedOrders.length - orderIndex}</h3>
+                      <p className="text-xs text-slate-500 mt-1">ID: {order.id}</p>
+                      <p className="text-sm text-slate-600">Dipesan pada: {formatDate(order.createdAt)}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.orderStatus)}`}>{order.orderStatus}</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(order.paymentStatus)}`}>Pembayaran: {order.paymentStatus}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Order Items */}
-                <div className="border-t border-gray-200 pt-4 mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Barang yang dipesan</h4>
-                  <div className="space-y-3">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.productName}
-                            </p>
+                {/* Bagian utama Kartu Pesanan, dipisahkan untuk item dan summary */}
+                <div className="divide-y divide-slate-200">
+                  {/* Daftar Item */}
+                  <div className="p-4 sm:p-6">
+                    <div className="space-y-4">
+                      {order.items.map((item, index) => (
+                                                 <div key={index} className="flex items-start space-x-4">
+                                                         {/* Gambar Produk */}
+                             <div className="flex-shrink-0 w-16 h-16 bg-slate-100 rounded-md overflow-hidden">
+                               {item.imageUrl ? (
+                                 <img
+                                   src={item.imageUrl.startsWith('http') 
+                                     ? item.imageUrl 
+                                     : `http://localhost:6060${item.imageUrl}`}
+                                   alt={item.productName}
+                                   className="w-full h-full object-cover"
+                                   onError={(e) => {
+                                     e.target.style.display = 'none';
+                                     e.target.nextSibling.style.display = 'flex';
+                                   }}
+                                 />
+                               ) : null}
+                               <div 
+                                 className="w-full h-full bg-slate-100 flex items-center justify-center"
+                                 style={{ display: item.imageUrl ? 'none' : 'flex' }}
+                               >
+                                 <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+                                 </svg>
+                               </div>
+                             </div>
+                          <div className="flex-grow">
+                            <p className="font-semibold text-slate-800">{item.productName}</p>
+                            {item.storeName && <p className="text-xs text-slate-500 mt-0.5 flex items-center"><StoreIcon /> {item.storeName}</p>}
+                            <p className="text-sm text-slate-600 mt-1">{item.quantity} x {formatPrice(item.price)}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-slate-800">{formatPrice(item.quantity * item.price)}</p>
                             {order.orderStatus === 'DELIVERED' && item.productId && user?.userId && hasUserReviewedProduct(item.productId, user.userId) && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                Sudah direview
+                              <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <CheckCircleIcon className="w-3 h-3 mr-1" /> Direview
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            Quantity: {item.quantity} × {formatPrice(item.price)}
-                          </p>
                         </div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatPrice(item.quantity * item.price)}
-                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ringkasan & Aksi */}
+                  <div className="p-4 sm:p-6 bg-slate-50/70">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                      <div className="text-sm text-slate-600 space-y-2">
+                        <p><span className="font-semibold text-slate-700">Alamat:</span> {order.address}</p>
+                        <p><span className="font-semibold text-slate-700">Pembayaran:</span> {order.paymentMethod.name}</p>
+                        {order.discount && (
+                           <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800">
+                             <p className="text-sm"><span className="font-bold">Promo:</span> {order.discount.promoCode} (-{order.discount.discountPercentage}%)</p>
+                           </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Order Summary */}
-                <div className="border-t border-gray-200 pt-4 mb-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Payment Method:</span> {order.paymentMethod.name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Delivery Address:</span> {order.address}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-slate-600">Total Pesanan</p>
+                        <p className="text-2xl font-bold text-red-600">{formatPrice(order.total)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">
-                        Total: {formatPrice(order.total)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="border-t border-gray-200 pt-4">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                    <button
-                      onClick={() => handleViewTracking(order)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium w-full md:w-auto"
-                    >
-                      Lacak Pesanan
-                    </button>
                     
-                    {order.orderStatus === 'DELIVERED' && hasUnreviewedProducts(order) && (
+                    {/* Tombol Aksi */}
+                    <div className="mt-6 border-t border-slate-200 pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                      {order.orderStatus === 'DELIVERED' ? (
+                        hasUnreviewedProducts(order) ? (
+                          <button
+                            onClick={() => {
+                              const unreviewedItems = order.items.filter(item => item.productId && !hasUserReviewedProduct(item.productId, user.userId));
+                              if (unreviewedItems.length === 1) {
+                                handleReviewProduct(unreviewedItems[0]);
+                              } else {
+                                setSelectedOrder({ ...order, items: unreviewedItems });
+                                setShowReviewSelection(true);
+                              }
+                            }}
+                            className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                          >
+                            Tulis Ulasan ({getUnreviewedProductsCount(order)})
+                          </button>
+                        ) : (
+                          <div className="flex items-center text-emerald-600 font-medium text-sm">
+                            <CheckCircleIcon className="w-5 h-5 mr-2" />
+                            Semua produk telah direview
+                          </div>
+                        )
+                      ) : null}
                       <button
-                        onClick={() => {
-                          if (order.items && order.items.length > 0) {
-                            const unreviewedItems = order.items.filter(item => {
-                              if (!item.productId || !user?.userId) return false;
-                              return !hasUserReviewedProduct(item.productId, user.userId);
-                            });
-                            
-                            if (unreviewedItems.length === 0) {
-                              alert('Semua produk dalam order ini sudah direview');
-                              return;
-                            }
-                            
-                            if (unreviewedItems.length === 1) {
-                              // Jika hanya 1 produk yang belum direview, langsung handle review
-                              handleReviewProduct(unreviewedItems[0]);
-                            } else {
-                              // Jika multiple products yang belum direview, tampilkan modal untuk pilih produk
-                              setSelectedOrder({
-                                ...order,
-                                items: unreviewedItems // Only show unreviewed items in modal
-                              });
-                              setShowReviewSelection(true);
-                            }
-                          } else {
-                            alert('Tidak ada produk dalam order ini');
-                          }
-                        }}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium w-full md:w-auto"
+                        onClick={() => handleViewTracking(order)}
+                        className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
                       >
-                        {(() => {
-                          const unreviewedCount = getUnreviewedProductsCount(order);
-                          return unreviewedCount > 1 
-                            ? `Tulis Ulasan (${unreviewedCount} produk)` 
-                            : 'Tulis Ulasan';
-                        })()}
+                        Lacak Pesanan
                       </button>
-                    )}
-                    
-                    {order.orderStatus === 'DELIVERED' && !hasUnreviewedProducts(order) && (
-                      <div className="flex items-center text-green-600 font-medium">
-                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        Semua produk sudah direview
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* --- MODALS (Tracking & Review) --- */}
+      {/* Backdrop */}
+      {(showTracking || showReviewSelection) && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-40 transition-opacity" aria-hidden="true"></div>
       )}
 
       {/* Tracking Modal */}
       {showTracking && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform transition-all">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Order Tracking - #{selectedOrder.id}
+                <h2 className="text-xl font-bold text-slate-900">
+                  Lacak Pesanan #{sortedOrders.findIndex(o => o.id === selectedOrder.id) + 1}
                 </h2>
-                <button
-                  onClick={() => {
-                    setShowTracking(false);
-                    setSelectedOrder(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
+                <button onClick={() => setShowTracking(false)} className="text-slate-400 hover:text-slate-600 rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
             </div>
-            
-            <div className="p-6">
+            <div className="flex-grow overflow-y-auto p-6">
               {trackingLoading ? (
-                <div className="flex items-center justify-center py-8 ">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
+                <div className="flex items-center justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-600"></div></div>
               ) : (
                 <OrderTracking orderId={selectedOrder.id} />
               )}
@@ -384,70 +319,55 @@ const OrderHistoryPage = () => {
 
       {/* Review Selection Modal */}
       {showReviewSelection && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col transform transition-all">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Pilih Produk untuk Direview
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowReviewSelection(false);
-                    setSelectedOrder(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
+                <h2 className="text-xl font-bold text-slate-900">Pilih Produk untuk Direview</h2>
+                <button onClick={() => setShowReviewSelection(false)} className="text-slate-400 hover:text-slate-600 rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
             </div>
-            
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
-                Order ini memiliki beberapa produk. Pilih produk yang ingin Anda review:
-              </p>
-              
+            <div className="flex-grow overflow-y-auto p-6">
+              <p className="text-slate-600 mb-6">Pilih salah satu produk dari pesanan ini untuk diberi ulasan.</p>
               <div className="space-y-3">
                 {selectedOrder.items.map((item, index) => (
                   <button
                     key={index}
-                    onClick={() => {
-                      handleReviewProduct(item);
-                      setShowReviewSelection(false);
-                      setSelectedOrder(null);
-                    }}
-                    className="w-full p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {item.productName}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Qty: {item.quantity} × {formatPrice(item.price / item.quantity)}
-                        </p>
-                      </div>
-                      <div className="text-green-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+                                         onClick={() => { handleReviewProduct(item); setShowReviewSelection(false); }}
+                     className="w-full p-4 border border-slate-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left flex items-center space-x-4"
+                   >
+                     <div className="flex-shrink-0 w-12 h-12 bg-slate-100 rounded-md overflow-hidden">
+                       {item.imageUrl ? (
+                         <img
+                           src={item.imageUrl.startsWith('http') 
+                             ? item.imageUrl 
+                             : `http://localhost:6060${item.imageUrl}`}
+                           alt={item.productName}
+                           className="w-full h-full object-cover"
+                           onError={(e) => {
+                             e.target.style.display = 'none';
+                             e.target.nextSibling.style.display = 'flex';
+                           }}
+                         />
+                       ) : null}
+                       <div 
+                         className="w-full h-full bg-slate-100 flex items-center justify-center"
+                         style={{ display: item.imageUrl ? 'none' : 'flex' }}
+                       >
+                         <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+                         </svg>
+                       </div>
+                     </div>
+                    <div className="flex-grow">
+                      <p className="font-semibold text-slate-800">{item.productName}</p>
+                      <p className="text-sm text-slate-500">{item.quantity} x {formatPrice(item.price)}</p>
                     </div>
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   </button>
                 ))}
-              </div>
-              
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    setShowReviewSelection(false);
-                    setSelectedOrder(null);
-                  }}
-                  className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
-                >
-                  Batal
-                </button>
               </div>
             </div>
           </div>
@@ -457,63 +377,65 @@ const OrderHistoryPage = () => {
   );
 };
 
-// Order Tracking Component
+// --- Order Tracking Component - Didesain ulang total untuk visualisasi timeline ---
 const OrderTracking = ({ orderId }) => {
   const { getTrackingTimeline } = useTrackingStore();
   const trackingItems = getTrackingTimeline(orderId);
 
-  const formatTrackingDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatTrackingDate = (dateString) => new Date(dateString).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+  // Ikon untuk setiap status
+  const getStatusIcon = (status) => {
+    const s = status.toLowerCase();
+    if (s.includes('delivered')) return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>;
+    if (s.includes('shipped')) return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17H6a1 1 0 01-1-1V5a1 1 0 011-1h11l3 4v8a1 1 0 01-1 1h-1m-6 0h7m-7 0a1 1 0 01-1-1V5" /></svg>;
+    if (s.includes('confirmed')) return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+    return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>;
   };
 
   if (trackingItems.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600">Belum ada informasi pelacakan.</p>
-      </div>
-    );
+    return <div className="text-center py-12 text-slate-500">Belum ada informasi pelacakan untuk pesanan ini.</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900">Jadwal Pelacakan</h3>
-      
-      <div className="relative">
+    <div className="flow-root">
+      <ul className="-mb-8">
         {trackingItems.map((item, index) => (
-          <div key={item.trackingId} className="flex items-start space-x-4 pb-6">
-            <div className="flex-shrink-0">
-              <div className={`w-4 h-4 rounded-full ${
-                index === 0 ? 'bg-blue-600' : 'bg-gray-300'
-              }`}></div>
-              {index < trackingItems.length - 1 && (
-                <div className="w-0.5 h-6 bg-gray-300 mt-2 ml-1.5"></div>
-              )}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-900">
-                  {item.status}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {formatTrackingDate(item.updatedAt)}
-                </p>
+          <li key={item.trackingId}>
+            <div className="relative pb-8">
+              {/* Garis Vertikal Timeline */}
+              {index !== trackingItems.length - 1 ? (
+                <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
+              ) : null}
+              
+              <div className="relative flex space-x-4">
+                {/* Ikon Status */}
+                <div>
+                  <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
+                      index === 0 ? 'bg-sky-600 text-white' : 'bg-slate-300 text-slate-700'
+                    }`}
+                  >
+                    {getStatusIcon(item.status)}
+                  </span>
+                </div>
+                {/* Detail Status */}
+                <div className="min-w-0 flex-1 pt-1.5">
+                  <p className={`text-sm font-semibold ${index === 0 ? 'text-slate-900' : 'text-slate-700'}`}>
+                    {item.status}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">{item.description}</p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {formatTrackingDate(item.updatedAt)}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {item.description}
-              </p>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 };
 
-export default OrderHistoryPage; 
+
+export default OrderHistoryPage;
