@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -25,8 +25,8 @@ RUN npm run build
 # Production stage dengan simple HTTP server
 FROM node:18-alpine
 
-# Install simple HTTP server
-RUN npm install -g serve
+# Install simple HTTP server and curl for health check
+RUN npm install -g serve && apk add --no-cache curl
 
 # Create app directory
 WORKDIR /app
@@ -45,7 +45,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:3000/ || exit 1
 
 # Start simple server
 CMD ["serve", "-s", "dist", "-l", "3000"] 

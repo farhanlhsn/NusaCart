@@ -15,8 +15,8 @@ RUN mvn clean package -DskipTests
 # Production stage
 FROM eclipse-temurin:21-jdk-alpine
 
-# Install curl untuk health check
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl untuk health check (Alpine uses apk, not apt-get)
+RUN apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
