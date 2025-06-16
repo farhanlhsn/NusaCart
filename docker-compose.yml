@@ -1,0 +1,79 @@
+version: '3.8'
+
+# Docker Compose untuk integrasi dengan Caddy lokal yang sudah ada
+# Tidak ada konflik port, hanya expose internal services
+
+services:
+  # Database MySQL
+  database:
+    image: mysql:8.0
+    container_name: nusacart-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: Atmin@NusaCart@2025
+      MYSQL_DATABASE: nusacart
+      MYSQL_USER: nusacart
+      MYSQL_PASSWORD: Atmin@NusaCart@2025
+    ports:
+      - "127.0.0.1:3306:3306"  # Only localhost access
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - nusacart-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend Spring Boot
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nusacart-backend
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://database:3306/nusacart?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=nusacart
+      - SPRING_DATASOURCE_PASSWORD=Atmin@NusaCart@2025
+    ports:
+      - "127.0.0.1:6060:6060"  # Only localhost access
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - nusacart-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6060/api/products"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Frontend React (served by simple HTTP server, no built-in Caddy)
+  frontend:
+    build:
+      context: ./Frontend/NusaCart
+      dockerfile: Dockerfile.simple
+      args:
+        - VITE_API_URL=http://localhost:6060
+    container_name: nusacart-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"  # Only localhost access
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - nusacart-network
+
+volumes:
+  mysql_data:
+  backend_logs:
+
+networks:
+  nusacart-network:
+    driver: bridge 

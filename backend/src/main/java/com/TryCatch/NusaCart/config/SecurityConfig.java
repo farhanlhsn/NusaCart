@@ -87,7 +87,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // URL frontend Anda
+        // Allow localhost untuk development dan domain/IP VPS untuk production
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:5173",    // Development Vite
+            "http://localhost:3000",    // Alternative development port
+            "http://localhost:80",      // Docker frontend
+            "http://localhost:8080",    // Docker nginx proxy
+            "http://frontend:80",       // Docker internal communication
+            "http://154.26.132.234",       // Ganti dengan IP VPS Anda
+            "https://nusacart.farhanlhsn.web.id"   // Ganti dengan domain Anda jika ada
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

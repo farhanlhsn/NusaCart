@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { BASE_URL } from '../config/constants';
 
 const api = axios.create({
-  baseURL: 'http://localhost:6060',
+  baseURL: BASE_URL,
   withCredentials: true,  // Pastikan cookies dikirim
   timeout: 60000, // 60 detik timeout untuk upload file
   maxContentLength: 100 * 1024 * 1024, // 100MB max content length
@@ -85,7 +86,7 @@ api.interceptors.response.use(
 
       try {
         console.log('[Response Interceptor] Attempting token refresh...');
-        const refreshResponse = await axios.post('http://localhost:6060/api/auth/refresh', {}, { 
+        const refreshResponse = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, { 
           withCredentials: true,
           timeout: 10000 // 10 second timeout
         });
@@ -149,7 +150,7 @@ export const proactiveTokenRefresh = async () => {
     console.log('[Proactive Refresh] Attempting proactive token refresh...');
     isRefreshing = true;
     
-    const response = await axios.post('http://localhost:6060/api/auth/refresh', {}, { 
+    const response = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, { 
       withCredentials: true,
       timeout: 10000
     });
