@@ -1,5 +1,5 @@
 # Multi-stage build untuk backend Spring Boot
-FROM maven:3.9.9-openjdk-21 AS build
+FROM maven:3.9.8-eclipse-temurin-21 AS build
 
 # Set working directory
 WORKDIR /app
@@ -13,7 +13,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Production stage
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk-alpine
 
 # Install curl untuk health check
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
