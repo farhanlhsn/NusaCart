@@ -14,7 +14,6 @@ NusaCart adalah platform e-commerce modern yang dirancang khusus untuk pasar Ind
 - **Database**: MySQL
 - **Authentication**: JWT (JSON Web Token) dengan Cookie-based session
 - **Security**: Spring Security dengan custom JWT filter
-- **Documentation**: OpenAPI 3 (Springdoc)
 - **Build Tool**: Maven
 - **Port**: 6060
 
