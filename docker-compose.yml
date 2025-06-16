@@ -53,11 +53,11 @@ services:
       timeout: 10s
       retries: 5
 
-  # Frontend React (served by simple HTTP server, no built-in Caddy)
+  # Frontend React (served by simple HTTP server)
   frontend:
     build:
       context: ./Frontend/NusaCart
-      dockerfile: Dockerfile.simple
+      dockerfile: Dockerfile
       args:
         - VITE_API_URL=http://localhost:6060
     container_name: nusacart-frontend
